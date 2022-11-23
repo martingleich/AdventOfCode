@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 
 namespace AdventOfCode
 {
@@ -9,9 +8,11 @@ namespace AdventOfCode
 		{
 			var hoster = new ProblemsLibrary.Hoster(
 				ProblemsLibrary.Reflection.FindAllProblems(typeof(Program).Assembly),
-				id => $"Inputs\\{(id.Count(c => c == '-') == 2 && id.EndsWith("-2") ? id.Substring(0, id.Length - 2) : id)}.txt");
-			hoster.RunTests();
-			hoster.RunUserInteractive();
+				id => $"Inputs\\{(id.Count(c => c == '-') == 2 && id.EndsWith("-2") ? id[..^2] : id)}.txt");
+			if (hoster.RunTests(args[0]))
+			{
+				hoster.SolveProblem(args[0], args[1]);
+			}
 		}
 	}
 }

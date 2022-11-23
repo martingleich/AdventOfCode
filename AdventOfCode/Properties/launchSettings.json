@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "AdventOfCode": {
-      "commandName": "Project",
-      "workingDirectory": "C:\\Home\\source\\AdventOfCode\\AdventOfCode"
-    }
-  }
-}
