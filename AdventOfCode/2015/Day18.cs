@@ -3,10 +3,15 @@ using System.Linq;
 
 namespace AventOfCode._2015
 {
-    [Problem("2015-18-01")]
-    public class Day18
+    public class Day18_Common
     {
-        private static int ExecuteBase(bool[,] initial, int count, bool fixCorners)
+        public static int Execute(string input, int count, bool fixCorners)
+        {
+            var grid = MapInput(input);
+            return Execute(grid, count, fixCorners);
+        }
+
+        private static int Execute(bool[,] initial, int count, bool fixCorners)
         {
             if (fixCorners)
             {
@@ -63,21 +68,6 @@ namespace AventOfCode._2015
             }
         }
 
-        [TestCase(@"
-.#.#.#
-...##.
-#....#
-..#...
-#.#..#
-####..",
-            4, false, 4)]
-        public static int Execute(string input, int count, bool fixCorners)
-        {
-            var grid = MapInput(input);
-            return ExecuteBase(grid, count, fixCorners);
-        }
-        public int Execute(string input) => Execute(input, 100, false);
-
         private static bool[,] MapInput(string input)
         {
             static bool? MapChar(char c)
@@ -92,6 +82,22 @@ namespace AventOfCode._2015
             return values;
         }
     }
+
+    [Problem("2015-18-01")]
+    public class Day18_Part1
+    {
+        [TestCase(@"
+.#.#.#
+...##.
+#....#
+..#...
+#.#..#
+####..",
+            4, 4)]
+        public static int Execute(string input, int count) => Day18_Common.Execute(input, count, false);
+        public int Execute(string input) => Execute(input, 100);
+    }
+
     [Problem("2015-18-02")]
     public class Day18_Part2
     {
@@ -103,7 +109,7 @@ namespace AventOfCode._2015
 #.#..#
 ####..",
             5, 17)]
-        public static int Execute(string input, int count) => Day18.Execute(input, count, true);
+        public static int Execute(string input, int count) => Day18_Common.Execute(input, count, true);
         public int Execute(string input) => Execute(input, 100);
     }
 }
