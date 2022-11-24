@@ -1,9 +1,10 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode;
+using ProblemsLibrary;
 using System.Linq;
 
 namespace AventOfCode._2015
 {
-	[Problem("2015-02-1")]
+    [Problem("2015-02-1")]
 	public sealed class Day02
 	{
 		public sealed class Box

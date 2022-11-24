@@ -1,10 +1,11 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode;
+using ProblemsLibrary;
 using System;
 using System.Linq;
 
 namespace AventOfCode._2015
 {
-	[Problem("2015-06-1")]
+    [Problem("2015-06-1")]
 	public class Day06
 	{
 		public readonly struct Point

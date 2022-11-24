@@ -1,10 +1,11 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode;
+using ProblemsLibrary;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace AventOfCode._2015
 {
-	[Problem("2015-03-1")]
+    [Problem("2015-03-1")]
 	public class Day03
 	{
 		public static (int, int) Move((int, int) cur, char c) => c switch

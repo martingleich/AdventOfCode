@@ -1,9 +1,10 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode;
+using ProblemsLibrary;
 using System.Linq;
 
 namespace AventOfCode._2015
 {
-	[Problem("2015-05-1")]
+    [Problem("2015-05-1")]
 	public class Day05
 	{
 		public static readonly char[] Vowels = { 'a', 'e', 'i', 'o', 'u' };

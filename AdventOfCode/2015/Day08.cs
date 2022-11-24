@@ -1,9 +1,10 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode;
+using ProblemsLibrary;
 using System.Linq;
 
 namespace AventOfCode._2015
 {
-	[Problem("2015-08-1")]
+    [Problem("2015-08-1")]
 	public class Day08
 	{
 		enum State

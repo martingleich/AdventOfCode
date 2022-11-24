@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace AventOfCode
+namespace AdventOfCode
 {
 	public static class Utilities
 	{
@@ -15,9 +15,9 @@ namespace AventOfCode
 				return result.Where(l => l.Length != 0);
 			return result;
 		}
-		public static IEnumerable<string> SplitLines(this string self) => SplitLines(self, true);
+		public static IEnumerable<string> SplitLines(this string self) => self.SplitLines(true);
 		public static int Min(params int[] values) => values.Min();
-		public static IEnumerable<T> WhereStructNotNull<T>(this IEnumerable<T?> self) where T:struct
+		public static IEnumerable<T> WhereStructNotNull<T>(this IEnumerable<T?> self) where T : struct
 		{
 			foreach (var maybeX in self)
 				if (maybeX is T x)
@@ -32,7 +32,7 @@ namespace AventOfCode
 			var result = new T[approxSquare, approxSquare];
 			int r = 0;
 			int c = 0;
-			foreach(var x in elems)
+			foreach (var x in elems)
 			{
 				result[r, c] = x;
 				++c;
@@ -115,8 +115,8 @@ namespace AventOfCode
 		}
 
 		public static IEnumerable<(T1, T2)> ZipTuple<T1, T2>(IEnumerable<T1> a, IEnumerable<T2> b) => a.Zip(b, (a, b) => (a, b));
-	
-		public static bool IsSubset<TKey, TValue>(ImmutableDictionary<TKey, TValue> a, ImmutableDictionary<TKey, TValue> subset) where TKey:notnull
+
+		public static bool IsSubset<TKey, TValue>(ImmutableDictionary<TKey, TValue> a, ImmutableDictionary<TKey, TValue> subset) where TKey : notnull
 			=> subset.All(x => a.TryGetValue(x.Key, out var aValue) && EqualityComparer<TValue>.Default.Equals(aValue, x.Value));
 	}
 }
