@@ -17,6 +17,33 @@ namespace AventOfCode
 		}
 		public static IEnumerable<string> SplitLines(this string self) => SplitLines(self, true);
 		public static int Min(params int[] values) => values.Min();
+		public static IEnumerable<T> WhereStructNotNull<T>(this IEnumerable<T?> self) where T:struct
+		{
+			foreach (var maybeX in self)
+				if (maybeX is T x)
+					yield return x;
+		}
+		public static T[,] ToSquareArray<T>(this IEnumerable<T> values)
+		{
+			var elems = values.ToArray();
+			var approxSquare = (int)Math.Sqrt(elems.Length);
+			if (approxSquare * approxSquare != elems.Length)
+				throw new ArgumentException($"Length of enumerable must be a square number");
+			var result = new T[approxSquare, approxSquare];
+			int r = 0;
+			int c = 0;
+			foreach(var x in elems)
+			{
+				result[r, c] = x;
+				++c;
+				if (c == approxSquare)
+				{
+					c = 0;
+					r++;
+				}
+			}
+			return result;
+		}
 		public static IEnumerable<TAggregate> RunningAggregate<TSource, TAggregate>(this IEnumerable<TSource> values, TAggregate seed, Func<TAggregate, TSource, TAggregate> func)
 		{
 			var cur = seed;
