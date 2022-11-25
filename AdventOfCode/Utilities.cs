@@ -118,5 +118,105 @@ namespace AdventOfCode
 
 		public static bool IsSubset<TKey, TValue>(ImmutableDictionary<TKey, TValue> a, ImmutableDictionary<TKey, TValue> subset) where TKey : notnull
 			=> subset.All(x => a.TryGetValue(x.Key, out var aValue) && EqualityComparer<TValue>.Default.Equals(aValue, x.Value));
+        public static Func<string, T?> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
+        public static Func<string, T?> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => str => {
+            var m = regex.Match(str);
+            return m.Success ? converter(m) : default;
+        };
+
+		public sealed class ReverseComparer<T> : IComparer<T>
+		{
+			public static IComparer<T> Default { get; } = new ReverseComparer<T>(Comparer<T>.Default);
+			private readonly IComparer<T> _comparer;
+			private ReverseComparer(IComparer<T> comparer)
+			{
+				_comparer = comparer ?? throw new ArgumentNullException(nameof(comparer));
+			}
+
+			public int Compare(T? x, T? y) => _comparer.Compare(y, x);
+		}
+		static class ImmutableEnumerator
+        {
+            public static ImmutableEnumerator<T>? Create<T>(IEnumerator<T> enumerator)
+            {
+                if (enumerator.MoveNext())
+                    return new ImmutableEnumerator<T>(enumerator, 0);
+                else
+                    return null;
+            }
+        }
+        class ImmutableEnumerator<T> : IEquatable<ImmutableEnumerator<T>>
+        {
+            private readonly IEnumerator<T> _enumerator;
+            public int Index { get; }
+            private (bool done, ImmutableEnumerator<T>?) _runOnce = (false, null);
+            public ImmutableEnumerator(IEnumerator<T> enumerator, int index)
+            {
+                _enumerator = enumerator;
+                Index = index;
+                Current = _enumerator.Current;
+            }
+            public ImmutableEnumerator<T>? MoveNext()
+            {
+                if (!_runOnce.done)
+                {
+                    var successful = _enumerator.MoveNext();
+                    _runOnce = (true, successful ? new ImmutableEnumerator<T>(_enumerator, Index + 1) : null);
+                }
+                return _runOnce.Item2;
+            }
+
+            public bool Equals(ImmutableEnumerator<T>? other) => other != null && other.Index == Index;
+            public override bool Equals(object? obj) => Equals(obj as ImmutableEnumerator<T>);
+            public override int GetHashCode() => Index.GetHashCode();
+            public T Current { get; private set; }
+        }
+
+        public static IEnumerable<KeyValuePair<TGroup, int>> AllCombinatorialSums<TGroup>(
+            this IEnumerable<IEnumerable<KeyValuePair<TGroup, int>>> groups,
+            Func<TGroup, TGroup, TGroup> combine,
+			IComparer<int> comparer)
+        {
+            return groups
+                .Select(g => g.OrderBy(i => i.Value, comparer).AsEnumerable())
+                .Aggregate(AddGroup);
+            IEnumerable<KeyValuePair<TGroup, int>> AddGroup(IEnumerable<KeyValuePair<TGroup, int>> a, IEnumerable<KeyValuePair<TGroup, int>> b)
+            {
+				var queue = new PriorityQueue<(ImmutableEnumerator<KeyValuePair<TGroup, int>>, ImmutableEnumerator<KeyValuePair<TGroup, int>>), int>(comparer);
+                var set = new HashSet<(ImmutableEnumerator<KeyValuePair<TGroup, int>>, ImmutableEnumerator<KeyValuePair<TGroup, int>>)>();
+				using var ea = a.GetEnumerator();
+				using var eb = b.GetEnumerator();
+                var firstA = ImmutableEnumerator.Create(ea)!;
+                var firstB = ImmutableEnumerator.Create(eb)!;
+                queue.Enqueue((firstA, firstB), firstA.Current.Value + firstB.Current.Value);
+                set.Add((firstA, firstB));
+                while(queue.Count > 0)
+                {
+                    queue.TryDequeue(out var tup, out var prio);
+                    yield return KeyValuePair.Create(combine(tup.Item1.Current.Key, tup.Item2.Current.Key), prio);
+                    int sum;
+
+                    var nextA = tup.Item1.MoveNext();
+                    if (nextA != null)
+                    {
+                        sum = nextA.Current.Value + tup.Item2.Current.Value;
+                        if (set.Add((nextA, tup.Item2)))
+                        {
+                            queue.Enqueue((nextA, tup.Item2), sum);
+                        }
+                    }
+                    var nextB = tup.Item2.MoveNext();
+                    if (nextB != null)
+                    {
+                        sum = tup.Item1.Current.Value + nextB.Current.Value;
+                        if (set.Add((tup.Item1, nextB)))
+                        {
+                            queue.Enqueue((tup.Item1, nextB), sum);
+                        }
+                    }
+                }
+            }
+        }
+
 	}
 }
