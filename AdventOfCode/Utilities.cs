@@ -123,6 +123,13 @@ namespace AdventOfCode
             var m = regex.Match(str);
             return m.Success ? converter(m) : default;
         };
+		public static Func<string, T?> OneOf<T>(params Func<string, T?>[] parsers) => str =>
+		{
+			foreach (var parser in parsers)
+				if (parser(str) is T value)
+					return value;
+			return default;
+		};
 
 		public sealed class ReverseComparer<T> : IComparer<T>
 		{
