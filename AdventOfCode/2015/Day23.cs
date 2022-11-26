@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProblemsLibrary;
+using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -6,9 +7,19 @@ namespace AdventOfCode._2015
 {
     public class Day23_Common
     {
-        public record struct Cpu(uint A, uint B, int Pc);
+        public record struct Cpu(uint A, uint B, int Pc)
+        {
+            public Cpu Jump(int offset) => this with { Pc = Pc + offset };
+        }
         public static int Execute(string input, uint initialA, uint initialB, bool returnB)
         {
+            static (Func<Cpu, uint>, Func<Cpu, uint, Cpu>) GetRegister(string name) => name switch
+            {
+                "a" => (cpu => cpu.A, (cpu, v) => cpu with { A = v }),
+                "b" => (cpu => cpu.B, (cpu, v) => cpu with { B = v}),
+                _ => throw new NotImplementedException(),
+            };
+
             var arithmeticInstruction = Utilities.MakeRegexParser(new Regex(@"(hlf|tpl|inc) (a|b)"), m =>
             {
                 Func<uint, uint> op = m.Groups[1].Value switch
@@ -16,19 +27,15 @@ namespace AdventOfCode._2015
                     "hlf" => v => v / 2,
                     "tpl" => v => v * 3,
                     "inc" => v => v + 1,
+                    _ => throw new NotImplementedException(),
                 };
-                Func<Cpu, Cpu> instr = m.Groups[2].Value switch
-                {
-                    "a" => cpu => new Cpu(op(cpu.A), cpu.B, cpu.Pc + 1),
-                    "b" => cpu => new Cpu(cpu.A, op(cpu.B), cpu.Pc + 1),
-                };
-                return instr;
+                var (reader, writer) = GetRegister(m.Groups[2].Value);
+                return (Func<Cpu, Cpu>)(cpu => writer(cpu, op(reader(cpu))).Jump(1));
             });
             var jumpInstruction = Utilities.MakeRegexParser(new Regex(@"jmp ((?:\+|-)\d+)"), m =>
             {
                 var offset = int.Parse(m.Groups[1].ValueSpan);
-                Cpu instr(Cpu cpu) => new (cpu.A, cpu.B, cpu.Pc + offset);
-                return (Func<Cpu, Cpu>)instr;
+                return (Func<Cpu, Cpu>)(cpu => cpu.Jump(offset));
             });
             var conditionalJumpInstruction = Utilities.MakeRegexParser(new Regex(@"(jie|jio) (a|b), ((?:\+|-)\d+)"), m =>
             {
@@ -36,19 +43,11 @@ namespace AdventOfCode._2015
                 {
                     "jie" => v => v % 2 == 0,
                     "jio" => v => v == 1,
+                    _ => throw new NotImplementedException(),
                 };
-                Func<Cpu, bool> full_con = m.Groups[2].Value switch
-                {
-                    "a" => cpu => con(cpu.A),
-                    "b" => cpu => con(cpu.B),
-                };
+                var (reader, _) = GetRegister(m.Groups[2].Value);
                 var offset = int.Parse(m.Groups[3].ValueSpan);
-                Cpu instruction(Cpu cpu)
-                {
-                    var final_offset = full_con(cpu) ? offset : 1;
-                    return cpu with { Pc = cpu.Pc + final_offset };
-                }
-                return (Func<Cpu, Cpu>)instruction;
+                return (Func<Cpu, Cpu>)(cpu => cpu.Jump(con(reader(cpu)) ? offset : 1));
             });
             var parser = Utilities.OneOf(arithmeticInstruction, jumpInstruction, conditionalJumpInstruction);
             var instructions = input.SplitLines(true).Select(line => parser(line)!).ToArray();
