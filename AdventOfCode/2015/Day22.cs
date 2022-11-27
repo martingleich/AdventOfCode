@@ -107,8 +107,8 @@ namespace AdventOfCode._2015
         private static BossData ParseBossData(string input)
         {
             var lines = input.SplitLines(true).ToArray();
-            var hitPoints = Utilities.MakeRegexParser(@"Hit Points: (\d+)", g => int.Parse(g.Groups[1].ValueSpan))(lines[0]);
-            var damage = Utilities.MakeRegexParser(@"Damage: (\d+)", g => int.Parse(g.Groups[1].ValueSpan))(lines[1]);
+            var hitPoints = Utilities.MakeRegexParserStruct(@"Hit Points: (\d+)", g => int.Parse(g.Groups[1].ValueSpan))(lines[0])!.Value;
+            var damage = Utilities.MakeRegexParserStruct(@"Damage: (\d+)", g => int.Parse(g.Groups[1].ValueSpan))(lines[1])!.Value;
             return new (hitPoints, damage);
         }
         public static int Execute(string input, bool hardMode)

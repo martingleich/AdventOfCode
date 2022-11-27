@@ -118,8 +118,13 @@ namespace AdventOfCode
 
 		public static bool IsSubset<TKey, TValue>(ImmutableDictionary<TKey, TValue> a, ImmutableDictionary<TKey, TValue> subset) where TKey : notnull
 			=> subset.All(x => a.TryGetValue(x.Key, out var aValue) && EqualityComparer<TValue>.Default.Equals(aValue, x.Value));
-        public static Func<string, T?> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
-        public static Func<string, T?> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => str => {
+        public static Func<string, T?> MakeRegexParser<T>(string regex, Func<Match, T> converter) where T:class => MakeRegexParser(new Regex(regex), converter);
+        public static Func<string, T?> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) where T:class => str => {
+            var m = regex.Match(str);
+            return m.Success ? converter(m) : default;
+        };
+        public static Func<string, T?> MakeRegexParserStruct<T>(string regex, Func<Match, T> converter) where T:struct => MakeRegexParserStruct(new Regex(regex), converter);
+        public static Func<string, T?> MakeRegexParserStruct<T>(Regex regex, Func<Match, T> converter) where T:struct => str => {
             var m = regex.Match(str);
             return m.Success ? converter(m) : default;
         };
@@ -225,5 +230,23 @@ namespace AdventOfCode
             }
         }
 
+        public static ulong PowMod(ulong x, ulong mod, ulong exp)
+        {
+            if (exp == 0)
+                return 1;
+            ulong y = 1;
+            while (exp > 1) {
+                if (exp % 2 == 0) {
+                    x = (x * x) % mod;
+                    exp /= 2;
+                } else
+                {
+                    y = (x * y) % mod;
+                    x = (x * x) % mod;
+                    exp = (exp  - 1) / 2;
+                }
+            }
+            return (y * x) % mod;
+        }
 	}
 }
