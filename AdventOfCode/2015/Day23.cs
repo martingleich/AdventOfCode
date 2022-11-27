@@ -16,7 +16,7 @@ namespace AdventOfCode._2015
             static (Func<Cpu, uint>, Func<Cpu, uint, Cpu>) GetRegister(string name) => name switch
             {
                 "a" => (cpu => cpu.A, (cpu, v) => cpu with { A = v }),
-                "b" => (cpu => cpu.B, (cpu, v) => cpu with { B = v}),
+                "b" => (cpu => cpu.B, (cpu, v) => cpu with { B = v }),
                 _ => throw new NotImplementedException(),
             };
 
@@ -52,12 +52,12 @@ namespace AdventOfCode._2015
             var parser = Utilities.OneOf(arithmeticInstruction, jumpInstruction, conditionalJumpInstruction);
             var instructions = input.SplitLines(true).Select(line => parser(line)!).ToArray();
             var cpu = new Cpu(initialA, initialB, 0);
-            while(cpu.Pc >= 0 && cpu.Pc < instructions.Length)
+            while (cpu.Pc >= 0 && cpu.Pc < instructions.Length)
                 cpu = instructions[cpu.Pc](cpu);
             return (int)(returnB ? cpu.B : cpu.A);
         }
     }
-    
+
     [Problem("2015-23-01")]
     public class Day23_Part1
     {
@@ -68,7 +68,7 @@ tpl b
 inc b", 2)]
         public int Execute(string input) => Day23_Common.Execute(input, 0, 0, true);
     }
-    
+
     [Problem("2015-23-02")]
     public class Day23_Part2
     {
