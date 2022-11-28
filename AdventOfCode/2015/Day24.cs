@@ -6,7 +6,9 @@ using System.Linq;
 
 namespace AdventOfCode._2015
 {
-    public class Day24_Common
+    [Problem("2015-24-01", MethodName = nameof(ExecutePart1))]
+    [Problem("2015-24-02", MethodName = nameof(ExecutePart2))]
+    public class Day24
     {
         private static IEnumerable<(ImmutableList<int>, ImmutableArray<int>)> PickElementsThatSumTo(int[] values, int targetSum)
         {
@@ -63,7 +65,7 @@ namespace AdventOfCode._2015
                 return false;
             }
         }
-        public static ulong Execute(string input, int parts)
+        private static ulong Execute(string input, int parts)
         {
             var values = input.SplitLines().Select(int.Parse).OrderByDescending(x => x).ToArray();
             var upper_bound = values.Sum() / parts;
@@ -81,18 +83,7 @@ namespace AdventOfCode._2015
             }
             return min_quantum_entanglement;
         }
-    }
-
-
-    [Problem("2015-24-01")]
-    public class Day24_Part1
-    {
-        public ulong Execute(string input) => Day24_Common.Execute(input, 3);
-    }
-
-    [Problem("2015-24-02")]
-    public class Day24_Part2
-    {
-        public ulong Execute(string input) => Day24_Common.Execute(input, 4);
+        public static ulong ExecutePart1(string input) => Execute(input, 3);
+        public static ulong ExecutePart2(string input) => Execute(input, 4);
     }
 }

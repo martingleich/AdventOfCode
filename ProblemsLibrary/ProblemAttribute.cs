@@ -2,7 +2,7 @@
 
 namespace ProblemsLibrary
 {
-	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+	[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 	public class ProblemAttribute : Attribute
 	{
 		public ProblemAttribute(string id)
@@ -11,5 +11,6 @@ namespace ProblemsLibrary
 		}
 
 		public string Id { get; }
+		public string? MethodName { get; set; }
 	}
 }

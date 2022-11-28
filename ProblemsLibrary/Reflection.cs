@@ -33,15 +33,15 @@ namespace ProblemsLibrary
 			return new TestCase(name, RunTestCase);
 		}
 
-		private static Problem CreateProblem(Type type, ProblemAttribute attribute)
+		private static Problem CreateProblem(Type type, ProblemAttribute attribute, string methodName)
 		{
 			var tests = (from meth in type.GetMethods()
 						 orderby meth.Name
 						 from attr in meth.GetCustomAttributes<TestCaseAttribute>()
 						 select CreateTestCaseFromMeth(type, meth, attr)).ToImmutableArray();
-			var execute = type.GetMethod("Execute", new[] { typeof(string) });
+			var execute = type.GetMethod(methodName, new[] { typeof(string) });
 			if (execute == null)
-				throw new ArgumentException("type must contain a Execute method");
+				throw new ArgumentException($"type must contain a method {methodName}(string)");
 			object Execute(string input)
 			{
 				try
@@ -62,10 +62,9 @@ namespace ProblemsLibrary
 		public static ImmutableArray<Problem> FindAllProblems(Assembly assembly)
 		{
 			return (from type in assembly.GetTypes()
-					let attribute = type.GetCustomAttribute<ProblemAttribute>()
-					where attribute != null
+					from attribute in type.GetCustomAttributes<ProblemAttribute>()
 					orderby attribute.Id
-					select CreateProblem(type, attribute)).ToImmutableArray();
+					select CreateProblem(type, attribute, attribute.MethodName ?? "Execute")).ToImmutableArray();
 		}
 	}
 }
