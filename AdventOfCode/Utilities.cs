@@ -23,6 +23,12 @@ namespace AdventOfCode
 				if (maybeX is T x)
 					yield return x;
 		}
+		public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T?> self) where T : class
+		{
+			foreach (var maybeX in self)
+				if (maybeX is T x)
+					yield return x;
+		}
 		public static IEnumerable<T> ToRectAndTranspose<T>(this IEnumerable<T> self, int width)
 		{
 			var result = new List<T>[width];
@@ -262,6 +268,16 @@ namespace AdventOfCode
                 }
             }
             return (y * x) % mod;
+        }
+        public static Dictionary<T, int> Histogram<T>(this IEnumerable<T> self) where T:notnull
+        {
+            var dict = new Dictionary<T, int>();
+            foreach (var x in self)
+            {
+                dict.TryGetValue(x, out int count);
+                dict[x] = count + 1;
+            }
+            return dict;
         }
 	}
 }
