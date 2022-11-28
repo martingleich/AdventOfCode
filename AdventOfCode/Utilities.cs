@@ -23,6 +23,21 @@ namespace AdventOfCode
 				if (maybeX is T x)
 					yield return x;
 		}
+		public static IEnumerable<T> ToRectAndTranspose<T>(this IEnumerable<T> self, int width)
+		{
+			var result = new List<T>[width];
+			for (int i = 0; i < width; ++i)
+				result[i] = new List<T>();
+			int j = 0;
+			foreach (var x in self)
+			{
+				result[j].Add(x);
+				j = (j + 1) % width;
+			}
+			foreach(var col in result)
+				foreach (var x in col)
+					yield return x;
+		}
 		public static T[,] ToSquareArray<T>(this IEnumerable<T> values)
 		{
 			var elems = values.ToArray();
