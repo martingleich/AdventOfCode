@@ -1,4 +1,5 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode.Utils;
+using ProblemsLibrary;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

@@ -1,4 +1,5 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode.Utils;
+using ProblemsLibrary;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode._2015
@@ -18,15 +19,16 @@ namespace AdventOfCode._2015
             int n = col + row - 1;
             return (n * (n + 1)) / 2 - (row - 1);
         }
-        public ulong Execute(string input)
+        private static readonly Parser<(int row, int col)> LineParser = Parser.MakeRegexParser(
+                        new Regex(@"To continue, please consult the code grid in the manual\.  Enter the code at row (\d+), column (\d+)\."), m =>
+                        {
+                            var row = int.Parse(m.Groups[1].ValueSpan);
+                            var col = int.Parse(m.Groups[2].ValueSpan);
+                            return (row, col);
+                        });
+        public static ulong Execute(string input)
         {
-            var (row, col) = Utilities.MakeRegexParserStruct(
-                new Regex(@"To continue, please consult the code grid in the manual\.  Enter the code at row (\d+), column (\d+)\."), m =>
-                {
-                    var row = int.Parse(m.Groups[1].ValueSpan);
-                    var col = int.Parse(m.Groups[2].ValueSpan);
-                    return (row, col);
-                })(input)!.Value;
+            var (row, col) = LineParser.Parse(input);
             var id = GetSequenceId(row, col);
             var elem = SeqAt(id - 1);
             return elem;

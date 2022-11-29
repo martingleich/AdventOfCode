@@ -1,4 +1,4 @@
-﻿using AdventOfCode;
+﻿using AdventOfCode.Utils;
 using ProblemsLibrary;
 using System.Linq;
 

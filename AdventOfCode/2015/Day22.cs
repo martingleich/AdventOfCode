@@ -1,4 +1,5 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode.Utils;
+using ProblemsLibrary;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
@@ -107,8 +108,8 @@ namespace AdventOfCode._2015
         private static BossData ParseBossData(string input)
         {
             var lines = input.SplitLines(true).ToArray();
-            var hitPoints = Utilities.MakeRegexParserStruct(@"Hit Points: (\d+)", g => int.Parse(g.Groups[1].ValueSpan))(lines[0])!.Value;
-            var damage = Utilities.MakeRegexParserStruct(@"Damage: (\d+)", g => int.Parse(g.Groups[1].ValueSpan))(lines[1])!.Value;
+            var hitPoints = Parser.MakeRegexParser(@"Hit Points: (\d+)", g => int.Parse(g.Groups[1].ValueSpan)).Parse(lines[0]);
+            var damage = Parser.MakeRegexParser(@"Damage: (\d+)", g => int.Parse(g.Groups[1].ValueSpan)).Parse(lines[1]);
             return new (hitPoints, damage);
         }
         public static int Execute(string input, bool hardMode)

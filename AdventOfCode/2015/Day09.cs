@@ -1,17 +1,20 @@
-﻿using AdventOfCode;
+﻿using AdventOfCode.Utils;
 using ProblemsLibrary;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using TypesafeParser;
 
 namespace AventOfCode._2015
 {
     [Problem("2015-09-1")]
 	public class Day09
 	{
-		private static readonly Func<string, ErrorOr<(string, string, int)>> DistanceParser = Pattern.Empty.AlphaNumeric().Fixed(" to ").AlphaNumeric().Fixed(" = ").AlphaNumeric(int.Parse).EndOfInput().Compile();
+		private static readonly Parser<(string, string, int)> DistanceParser =
+			from @from in Parser.AlphaNumeric.ThenFixed(" to ")
+			from to in Parser.AlphaNumeric.ThenFixed(" = ")
+			from distance in Parser.Int32
+			select (@from, to, distance);
 		public class Distances
 		{
 			readonly ImmutableArray<int> Root;
@@ -27,7 +30,7 @@ namespace AventOfCode._2015
 					else
 						return idMap[name] = idMap.Count;
 				}
-				foreach (var entry in input.SplitLines().Select(line => DistanceParser(line).Value))
+				foreach (var entry in input.SplitLines().Select(DistanceParser.Parse))
 				{
 					Add(GetId(entry.Item1), GetId(entry.Item2), entry.Item3);
 				}

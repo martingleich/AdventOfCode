@@ -1,4 +1,5 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode.Utils;
+using ProblemsLibrary;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,12 +25,12 @@ namespace AdventOfCode._2016
             public int Length => Math.Abs(X) + Math.Abs(Y);
         }
         private record struct Step(Direction Direction, int Distance);
-        private static readonly Func<string, Step?> StepParser = Utilities.MakeRegexParserStruct(@"(R|L)(\d+)", m =>
+        private static readonly Parser<Step> StepParser = Parser.MakeRegexParser(@"\s*(R|L)(\d+)\s*", m =>
             new Step(
                 m.Groups[1].Value == "L" ? Direction.Left : Direction.Right,
                 int.Parse(m.Groups[2].ValueSpan))
         );
-        private static readonly Func<string, IEnumerable<Step>> InputParser = input => input.Split(',').Select(x => StepParser(x.Trim())!.Value);
+        private static readonly Func<string, IEnumerable<Step>> InputParser = input => input.Split(',').Select(StepParser.Parse);
         private record struct State(Direction Dir, Position Pos)
         {
             public State Move(Step step)

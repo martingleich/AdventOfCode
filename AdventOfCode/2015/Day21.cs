@@ -1,10 +1,11 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode.Utils;
+using ProblemsLibrary;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using static AdventOfCode.Utilities;
+using static AdventOfCode.Utils.Utilities;
 
 namespace AdventOfCode._2015
 {
@@ -44,8 +45,8 @@ Defense +3   80     0       3";
         }
         private static IEnumerable<Item> Parse(string input)
         {
-            var categoryParser = Utilities.MakeRegexParser(@"^(\w+):\s+Cost\s+Damage\s+Armor$", m => m.Groups[1].Value);
-            var itemParser = Utilities.MakeRegexParser(@"^(\w+|\w+ \+\d)\s+(\d+)\s+(\d+)\s+(\d+)$", m =>
+            var categoryParser = Parser.MakeRegexParser(@"^(\w+):\s+Cost\s+Damage\s+Armor$", m => m.Groups[1].Value);
+            var itemParser = Parser.MakeRegexParser(@"^(\w+|\w+ \+\d)\s+(\d+)\s+(\d+)\s+(\d+)$", m =>
             {
                 var name = m.Groups[1].Value;
                 var cost = int.Parse(m.Groups[2].ValueSpan);
@@ -56,9 +57,9 @@ Defense +3   80     0       3";
             string? currentCategory = null;
             foreach (var line in input.SplitLines(true))
             {
-                if (categoryParser(line) is string category)
+                if (categoryParser.TryParse(line).TryGetValue(out var category))
                     currentCategory = category;
-                else if (itemParser(line) is Func<string, Item> item)
+                else if (itemParser.TryParse(line).TryGetValue(out var item))
                     yield return item(currentCategory!);
             }
             // Weapons are required.

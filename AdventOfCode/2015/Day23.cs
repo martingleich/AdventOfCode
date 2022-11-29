@@ -1,4 +1,5 @@
-﻿using ProblemsLibrary;
+﻿using AdventOfCode.Utils;
+using ProblemsLibrary;
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -20,7 +21,7 @@ namespace AdventOfCode._2015
                 _ => throw new NotImplementedException(),
             };
 
-            var arithmeticInstruction = Utilities.MakeRegexParser(new Regex(@"(hlf|tpl|inc) (a|b)"), m =>
+            var arithmeticInstruction = Parser.MakeRegexParser(new Regex(@"(hlf|tpl|inc) (a|b)"), m =>
             {
                 Func<uint, uint> op = m.Groups[1].Value switch
                 {
@@ -32,12 +33,12 @@ namespace AdventOfCode._2015
                 var (reader, writer) = GetRegister(m.Groups[2].Value);
                 return (Func<Cpu, Cpu>)(cpu => writer(cpu, op(reader(cpu))).Jump(1));
             });
-            var jumpInstruction = Utilities.MakeRegexParser(new Regex(@"jmp ((?:\+|-)\d+)"), m =>
+            var jumpInstruction = Parser.MakeRegexParser(new Regex(@"jmp ((?:\+|-)\d+)"), m =>
             {
                 var offset = int.Parse(m.Groups[1].ValueSpan);
                 return (Func<Cpu, Cpu>)(cpu => cpu.Jump(offset));
             });
-            var conditionalJumpInstruction = Utilities.MakeRegexParser(new Regex(@"(jie|jio) (a|b), ((?:\+|-)\d+)"), m =>
+            var conditionalJumpInstruction = Parser.MakeRegexParser(new Regex(@"(jie|jio) (a|b), ((?:\+|-)\d+)"), m =>
             {
                 Func<uint, bool> con = m.Groups[1].Value switch
                 {
@@ -49,8 +50,8 @@ namespace AdventOfCode._2015
                 var offset = int.Parse(m.Groups[3].ValueSpan);
                 return (Func<Cpu, Cpu>)(cpu => cpu.Jump(con(reader(cpu)) ? offset : 1));
             });
-            var parser = Utilities.OneOf(arithmeticInstruction, jumpInstruction, conditionalJumpInstruction);
-            var instructions = input.SplitLines(true).Select(line => parser(line)!).ToArray();
+            var parser = Parser.OneOf(arithmeticInstruction, jumpInstruction, conditionalJumpInstruction);
+            var instructions = input.SplitLines(true).Select(parser.Parse).ToArray();
             var cpu = new Cpu(initialA, initialB, 0);
             while (cpu.Pc >= 0 && cpu.Pc < instructions.Length)
                 cpu = instructions[cpu.Pc](cpu);

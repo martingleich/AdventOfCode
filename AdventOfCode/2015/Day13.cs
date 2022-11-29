@@ -1,10 +1,9 @@
-﻿using AdventOfCode;
+﻿using AdventOfCode.Utils;
 using ProblemsLibrary;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using TypesafeParser;
 
 namespace AventOfCode._2015
 {
@@ -17,17 +16,12 @@ namespace AventOfCode._2015
 			"gain" => true,
 			_ => throw new ArgumentException(nameof(value))
 		};
-		public static readonly Func<string, ErrorOr<(string First, bool Sign, int Mag, string Second)>> LineParser = Pattern.Empty.
-			AlphaNumeric().
-			Fixed(" would ").
-			AlphaNumeric(MatchSign).
-			Fixed(" ").
-			AlphaNumeric(int.Parse).
-			Fixed(" happiness units by sitting next to ").
-			AlphaNumeric().
-			Fixed(".").
-			EndOfInput().Compile();
-
+		public static readonly Parser<(string First, bool Sign, int Mag, string Second)> LineParser =
+			from first in Parser.AlphaNumeric.ThenFixed(" would ")
+			from sign in Parser.AlphaNumeric.Select(MatchSign).ThenFixed(" ")
+			from mag in Parser.Int32.ThenFixed(" happiness units by sitting next to ")
+			from second in Parser.AlphaNumeric.ThenFixed(".")
+			select (first, sign, mag, second);
 
 		public static int EvalCircle(ImmutableArray<string> chars, Dictionary<(string, string), int> info)
 		{
@@ -72,7 +66,7 @@ David would gain 41 happiness units by sitting next to Carol.", 330)]
 		public static void LoadData(string inputs, out Dictionary<(string, string), int> infos, out ImmutableArray<string> circle)
 		{
 			infos = new Dictionary<(string, string), int>();
-			foreach (var (First, Sign, Mag, Second) in inputs.SplitLines().Select(line => LineParser(line).Value))
+			foreach (var (First, Sign, Mag, Second) in inputs.SplitLines().Select(LineParser.Parse))
 				infos.Add((First, Second), Sign ? Mag : -Mag);
 			circle = infos.Keys.Select(v => v.Item1).Distinct().ToImmutableArray();
 		}

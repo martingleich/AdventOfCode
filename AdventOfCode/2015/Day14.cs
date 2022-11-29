@@ -1,13 +1,12 @@
-﻿using AdventOfCode;
+﻿using AdventOfCode.Utils;
 using ProblemsLibrary;
 using System;
 using System.Collections.Immutable;
 using System.Linq;
-using TypesafeParser;
 
 namespace AventOfCode._2015
 {
-    [Problem("2015-14")]
+	[Problem("2015-14")]
 	public class Day14
 	{
 		public class Reindeer
@@ -34,21 +33,16 @@ namespace AventOfCode._2015
 				return periods * DistancePerPeriod + flyTimeInPeriod * Speed;
 			}
 
-			private static Func<string, ErrorOr<(string, int, int, int)>> Parser = Pattern.Empty.
-				AlphaNumeric().
-				Fixed(" can fly ").
-				AlphaNumeric(int.Parse).
-				Fixed(" km/s for ").
-				AlphaNumeric(int.Parse).
-				Fixed(" seconds, but then must rest for ").
-				AlphaNumeric(int.Parse).
-				Fixed(" seconds.").
-				EndOfInput().
-				Compile();
+			private static readonly Parser<(string, int, int, int)> LineParser =
+				from name in Parser.AlphaNumeric.ThenFixed(" can fly ")
+				from speed in Parser.Int32.ThenFixed(" km/s for ")
+				from time_fly in Parser.Int32.ThenFixed(" seconds, but then must rest for ")
+				from time_rest in Parser.Int32.ThenFixed(" seconds.")
+				select (name, speed, time_fly, time_rest);
 
 			public static Reindeer FromText(string line)
 			{
-				var value = Parser(line).Value;
+				var value = LineParser.Parse(line);
 				return new Reindeer(value.Item2, value.Item3, value.Item4);
 			}
 		}

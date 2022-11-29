@@ -1,4 +1,4 @@
-﻿using AdventOfCode;
+﻿using AdventOfCode.Utils;
 using ProblemsLibrary;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace AventOfCode._2015
 {
-    [Problem("2015-16")]
+	[Problem("2015-16")]
 	public class Day16
 	{
 		public class Sue

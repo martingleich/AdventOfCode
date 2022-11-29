@@ -7,7 +7,7 @@ namespace ProblemsLibrary
 {
 	public sealed class Hoster
 	{
-		private readonly ImmutableArray<Problem> Problems;
+		public readonly ImmutableArray<Problem> Problems;
 		private readonly Func<string, string> DefaultInputFileProvider;
 
 		public Hoster(
@@ -22,7 +22,7 @@ namespace ProblemsLibrary
 
 		public bool RunTests(string id) => RunTests(Problems.Where(p => p.Id == id));
 
-		private static bool RunTests(IEnumerable<Problem> problems)
+		public bool RunTests(IEnumerable<Problem> problems)
 		{
 			var start = DateTime.Now;
 			int count = 0;
