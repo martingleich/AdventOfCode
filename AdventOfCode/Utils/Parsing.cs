@@ -1,19 +1,16 @@
 ﻿using System;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode.Utils
 {
     public abstract class Parser<T>
     {
-        protected Parser() { }
-
-        public Result<T> TryParse(string input) => ParsePartial(Span.FromString(input)).Value;
+        public Result<T> TryParse(string input) => ParsePartial(Span.FromString(input)).Map(v => v.Value);
         public T Parse(string input) => TryParse(input).Value;
-        public abstract ParseResult<T> ParsePartial(Span input);
+        public abstract Result<PartialParsed<T>> ParsePartial(Span input);
     }
-    public struct Span
+    public readonly struct Span
     {
         public readonly string Input;
         public readonly int Cursor;
@@ -27,66 +24,50 @@ namespace AdventOfCode.Utils
         public static Span FromString(string input) => new(input, 0);
         public Span Advance(int count) => new(Input, Cursor + count);
     }
-    public struct ParseResult<T>
+
+    public readonly struct PartialParsed<T>
     {
-        public Result<T> Value;
-        public Span Span;
+        public readonly T Value;
+        public readonly Span Remaining;
 
-        public static ParseResult<T> Okay(T realResult, Span subSpan) => new (Result.Okay(realResult), subSpan);
-        public static ParseResult<T> Create(Result<T> value, Span span) => new(value, span);
-        public static readonly ParseResult<T> Error;
-
-        public ParseResult(Result<T> value, Span span)
+        public PartialParsed(T value, Span remaining)
         {
             Value = value;
-            Span = span;
+            Remaining = remaining;
         }
 
-        public bool HasValue => Value.HasValue;
-        public bool TryGetValue([MaybeNull, NotNullWhen(true)] out T value, out Span span)
-        {
-            if (Value.TryGetValue(out value))
-            {
-                span = Span;
-                return true;
-            }
-            else
-            {
-                span = default;
-                return false;
-            }
-        }
-
+        public PartialParsed<TResult> Map<TResult>(Func<T, TResult> map) => PartialParsed.Create(map(Value), Remaining);
+        public PartialParsed<T> Advance(int count) => PartialParsed.Create(Value, Remaining.Advance(count));
     }
-    public static class ParseResult
+
+    public static class PartialParsed
     {
-        public static ParseResult<T> Okay<T>(T realResult, Span subSpan) => new (Result.Okay(realResult), subSpan);
-        public static ParseResult<T> Create<T>(Result<T> value, Span span) => new(value, span);
+        public static PartialParsed<T> Create<T>(T value, Span remaining) => new (value, remaining);
     }
+
     public static class Parser
     {
-        public readonly static Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"[a-zA-Z0-9]+"), m => m.Value);
-        public readonly static Parser<int> Int32 = MakeRegexParser(new Regex(@"\d+"), m => int.Parse(m.Value));
+        public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"[a-zA-Z0-9]+"), m => m.Value);
+        public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"\d+"), m => int.Parse(m.Value));
 
-        private sealed class RegexParser<T> : Parser<T>
+        private sealed class RegexParser : Parser<Match>
         {
             private readonly Regex _regex;
-            private readonly Func<Match, Result<T>> _converter;
 
-            public RegexParser(Regex regex, Func<Match, Result<T>> converter)
+            public RegexParser(Regex regex)
             {
                 _regex = regex ?? throw new ArgumentNullException(nameof(regex));
-                _converter = converter ?? throw new ArgumentNullException(nameof(converter));
             }
-            public override ParseResult<T> ParsePartial(Span input)
+            public override Result<PartialParsed<Match>> ParsePartial(Span input)
             {
                 var m = _regex.Match(input.Input, input.Cursor);
-                return m.Success ? ParseResult.Create(_converter(m), input.Advance(m.Length)) : ParseResult<T>.Error;
+                return m.Success ? Result.Okay(PartialParsed.Create(m, input.Advance(m.Length))) : default;
             }
         }
 
+        public static Parser<Match> ToParser(this Regex regex) => new RegexParser(regex);
         public static Parser<T> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
-        public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => new RegexParser<T>(regex, m => Result.Okay(converter(m)));
+        public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => regex.ToParser().Select(converter);
 
         private sealed class OneOfParser<T> : Parser<T>
         {
@@ -97,7 +78,7 @@ namespace AdventOfCode.Utils
                 _alternatives = alternatives;
             }
 
-            public override ParseResult<T> ParsePartial(Span input)
+            public override Result<PartialParsed<T>> ParsePartial(Span input)
             {
                 foreach (var parser in _alternatives)
                 {
@@ -105,7 +86,7 @@ namespace AdventOfCode.Utils
                     if (result.HasValue)
                         return result;
                 }
-                return ParseResult<T>.Error;
+                return default;
             }
         }
 
@@ -124,14 +105,12 @@ namespace AdventOfCode.Utils
                 _fixed = @fixed;
             }
 
-            public override ParseResult<T> ParsePartial(Span input)
+            public override Result<PartialParsed<T>> ParsePartial(Span input)
             {
-                if (_parser.ParsePartial(input).TryGetValue(out var value, out var span))
-                {
-                    if (span.Input[span.Cursor..].StartsWith(_fixed))
-                        return ParseResult.Okay(value, span.Advance(_fixed.Length));
-                }
-                return ParseResult<T>.Error;
+                return _parser.ParsePartial(input).TryGetValue(out var parsed) &&
+                       parsed.Remaining.Input[parsed.Remaining.Cursor..].StartsWith(_fixed)
+                    ? Result.Okay(parsed.Advance(_fixed.Length))
+                    : default;
             }
         }
 
@@ -148,39 +127,35 @@ namespace AdventOfCode.Utils
                 _map = map;
             }
 
-            public override ParseResult<TResult> ParsePartial(Span input)
-            {
-                if (_parser.ParsePartial(input).TryGetValue(out var value, out var span))
-                    return ParseResult.Okay(_map(value), span);
-                return ParseResult<TResult>.Error;
-            }
+            public override Result<PartialParsed<TResult>> ParsePartial(Span input) =>
+                _parser.ParsePartial(input).Map(t => t.Map(_map));
         }
         public static Parser<TResult> SelectMany<TSource, TCollection, TResult>(this Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
             => new SelectManyParser<TSource, TCollection, TResult>(source, collectionSelector, resultSelector);
         private sealed class SelectManyParser<TSource, TCollection, TResult> : Parser<TResult>
         {
-            private readonly Parser<TSource> Source;
-            private readonly Func<TSource, Parser<TCollection>> CollectionSelector;
-            private readonly Func<TSource, TCollection, TResult> ResultSelector;
+            private readonly Parser<TSource> _source;
+            private readonly Func<TSource, Parser<TCollection>> _collectionSelector;
+            private readonly Func<TSource, TCollection, TResult> _resultSelector;
 
             public SelectManyParser(Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
             {
-                Source = source ?? throw new ArgumentNullException(nameof(source));
-                CollectionSelector = collectionSelector ?? throw new ArgumentNullException(nameof(collectionSelector));
-                ResultSelector = resultSelector ?? throw new ArgumentNullException(nameof(resultSelector));
+                _source = source ?? throw new ArgumentNullException(nameof(source));
+                _collectionSelector = collectionSelector ?? throw new ArgumentNullException(nameof(collectionSelector));
+                _resultSelector = resultSelector ?? throw new ArgumentNullException(nameof(resultSelector));
             }
 
-            public override ParseResult<TResult> ParsePartial(Span input)
+            public override Result<PartialParsed<TResult>> ParsePartial(Span input)
             {
-                var result = Source.ParsePartial(input);
-                if (!result.TryGetValue(out var value, out var span))
-                    return ParseResult<TResult>.Error;
-                var nextParser = CollectionSelector(value);
-                var subResult = nextParser.ParsePartial(span);
-                if(!subResult.TryGetValue(out var subValue, out var subSpan))
-                    return ParseResult<TResult>.Error;
-                var realResult = ResultSelector(value, subValue);
-                return ParseResult.Okay(realResult, subSpan);
+                var result = _source.ParsePartial(input);
+                if (!result.TryGetValue(out var parsed))
+                    return default;
+                var nextParser = _collectionSelector(parsed.Value);
+                var subResult = nextParser.ParsePartial(parsed.Remaining);
+                if(!subResult.TryGetValue(out var nextParsed))
+                    return default;
+                var realResult = _resultSelector(parsed.Value, nextParsed.Value);
+                return Result.Okay(PartialParsed.Create(realResult, nextParsed.Remaining));
             }
         }
     }
