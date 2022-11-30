@@ -264,6 +264,16 @@ namespace AdventOfCode.Utils
             }
             return y * x % mod;
         }
+
+        public static T MostHistogram<T>(this IEnumerable<T> self) where T : notnull
+        {
+            return Histogram(self).MinBy(x => x.Value).Key;
+        }
+        public static T LeastHistogram<T>(this IEnumerable<T> self) where T : notnull
+        {
+            return Histogram(self).MaxBy(x => x.Value).Key;
+        }
+
         public static Dictionary<T, int> Histogram<T>(this IEnumerable<T> self) where T : notnull
         {
             var dict = new Dictionary<T, int>();
