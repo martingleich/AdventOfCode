@@ -58,7 +58,7 @@ public class Day9
                     ++subLength;
                 }
             }
-            length += mul * subLength;
+            length += (ulong)mul * subLength;
         }
         return length;
     }
