@@ -8,6 +8,10 @@ namespace AdventOfCode.Utils
 {
     public static class Utilities
     {
+        public enum SplitOptions
+        {
+            IgnoreEmpty,
+        }
         public static IEnumerable<string> SplitLines(this string self, bool ignoreEmpty)
         {
             var result = Regex.Split(self, "\r\n|\r|\n").Select(s => s.Trim());
@@ -16,6 +20,28 @@ namespace AdventOfCode.Utils
             return result;
         }
         public static IEnumerable<string> SplitLines(this string self) => self.SplitLines(true);
+        public static IEnumerable<IEnumerable<T>> Split<T>(this IEnumerable<T> self, Func<T, bool> split, SplitOptions splitOptions = SplitOptions.IgnoreEmpty)
+        {
+            var group = default(List<T>?);
+            foreach (var value in self)
+            {
+                if (split(value))
+                {
+                    if ((splitOptions & SplitOptions.IgnoreEmpty) == 0 || (group != null && group.Count > 0))
+                    {
+                        yield return group ?? Enumerable.Empty<T>();
+                        group = null;
+                    }
+                }
+                else
+                {
+                    group ??= new List<T>();
+                    group.Add(value);
+                }
+            }
+            if((splitOptions & SplitOptions.IgnoreEmpty) == 0 || (group != null && group.Count > 0))
+                yield return group ?? Enumerable.Empty<T>();
+        }
         public static int Min(params int[] values) => values.Min();
         public static IEnumerable<T> WhereStructNotNull<T>(this IEnumerable<T?> self) where T : struct
         {
