@@ -1,28 +1,36 @@
 ﻿using System;
 using System.Collections.Immutable;
+using System.Data.Common;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode.Utils
 {
     public abstract class Parser<T>
     {
-        public Result<T> TryParse(string input) => ParsePartial(Span.FromString(input)).Map(v => v.Value);
-        public T Parse(string input) => TryParse(input).Value;
+        public T Parse(string input) => Parse(Span.FromString(input));
+        public T Parse(Span span) => TryParse(span).Value;
+        public Result<T> TryParse(string input) => TryParse(Span.FromString(input));
+        public Result<T> TryParse(Span span) => ParsePartial(span).Map(v => v.Value);
         public abstract Result<PartialParsed<T>> ParsePartial(Span input);
     }
     public readonly struct Span
     {
         public readonly string Input;
         public readonly int Cursor;
+        public readonly int Length;
 
-        private Span(string input, int cursor)
+        private Span(string input, int cursor, int length)
         {
             Input = input ?? throw new ArgumentNullException(nameof(input));
             Cursor = cursor;
+            Length = length;
         }
 
-        public static Span FromString(string input) => new(input, 0);
-        public Span Advance(int count) => new(Input, Cursor + count);
+        public static Span FromString(string input) => new(input, 0, input.Length);
+        public Span Advance(int count) => new(Input, Cursor + count, Length - count);
+        public char this[int c] => Input[Cursor + c];
+        public Span Substring(int start, int end) => new(Input, Cursor + start, end - start);
+        public override string ToString() => Input.Substring(Cursor, Length);
     }
 
     public readonly struct PartialParsed<T>
@@ -60,7 +68,7 @@ namespace AdventOfCode.Utils
             }
             public override Result<PartialParsed<Match>> ParsePartial(Span input)
             {
-                var m = _regex.Match(input.Input, input.Cursor);
+                var m = _regex.Match(input.Input, input.Cursor, input.Length);
                 return m.Success ? Result.Okay(PartialParsed.Create(m, input.Advance(m.Length))) : default;
             }
         }
@@ -108,7 +116,7 @@ namespace AdventOfCode.Utils
             public override Result<PartialParsed<T>> ParsePartial(Span input)
             {
                 return _parser.ParsePartial(input).TryGetValue(out var parsed) &&
-                       parsed.Remaining.Input[parsed.Remaining.Cursor..].StartsWith(_fixed)
+                       parsed.Remaining.Input[parsed.Remaining.Cursor..(parsed.Remaining.Cursor+parsed.Remaining.Length)].StartsWith(_fixed)
                     ? Result.Okay(parsed.Advance(_fixed.Length))
                     : default;
             }
