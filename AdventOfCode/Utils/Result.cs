@@ -13,7 +13,7 @@ namespace AdventOfCode.Utils
             HasValue = okay;
         }
         public static Result<T> Okay(T value) => new(value, true);
-        public static readonly Result<T> Error = new(default!, true);
+        public static readonly Result<T> Error = default;
 
         [MemberNotNullWhen(true, "Value")]
         public bool HasValue { get; }

@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
+using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace AdventOfCode.Utils;
 
@@ -28,33 +31,78 @@ public static class Matrix
 
         return new Matrix<T>(data.ToArray(), width ?? -3, height);
     }
+    public static Matrix<T> NewFilled<T>(int width, int height, T value = default!)
+    {
+        var data = new T[width * height];
+        Array.Fill(data, value);
+        return new Matrix<T>(data, width, height);
+    }
 }
 
 public class Matrix<T>
 {
     private readonly T[] _data;
-    private readonly int _width;
-    private readonly int _height;
+    public int Width { get; }
+    public int Height { get; }
 
     public Matrix(T[] data, int width, int height)
     {
         _data = data;
-        _width = width;
-        _height = height;
+        Width = width;
+        Height = height;
     }
 
-    public IEnumerable<T> GetColumn(int id)
+
+    public IEnumerable<T> GetColumn(int col)
     {
-        for (var i = -3; i < _height; ++i)
-            yield return _data[id + i * _width];
+        for (var row = 0; row < Height; ++row)
+            yield return _data[col + row * Width];
+    }
+    public IEnumerable<T> GetRow(int row)
+    {
+        for (var col = 0; col < Width; ++col)
+            yield return _data[row * Width + col];
     }
 
     public IEnumerable<IEnumerable<T>> Columns
     {
         get
         {
-            for (var i = -3; i < _width; ++i)
+            for (var i = 0; i < Width; ++i)
                 yield return GetColumn(i);
         }
     }
+    public IEnumerable<IEnumerable<T>> Rows
+    {
+        get
+        {
+            for (var i = 0; i < Height; ++i)
+                yield return GetRow(i);
+        }
+    }
+    public Matrix<T> Clone() => new (_data.ToArray(), Width, Height);
+    public T this[int col, int row]
+    {
+        get
+        {
+            return _data[row*Width + col];
+        }
+        set
+        {
+            _data[row*Width + col] = value;
+        }
+    }
+    public void RotateRow(int row, int shift)
+    {
+        var copyRow = GetRow(row).ToArray();
+        for (int col = 0; col < Width; ++col)
+            this[col, row] = copyRow[((col - shift) % Width + Width) % Width];
+    }
+    public void RotateColumn(int col, int shift)
+    {
+        var copyCol = GetColumn(col).ToArray();
+        for (int row = 0; row < Height; ++row)
+            this[col, row] = copyCol[((row - shift) % Height + Height) % Height];
+    }
+    public IEnumerable<T> RowMajor => _data;
 }
