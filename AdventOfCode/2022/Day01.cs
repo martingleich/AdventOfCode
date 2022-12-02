@@ -2,6 +2,8 @@
 using ProblemsLibrary;
 using System.Collections.Generic;
 using System.Linq;
+#pragma warning disable CS8509
+#pragma warning disable CS8524
 
 namespace AdventOfCode._2022;
 
