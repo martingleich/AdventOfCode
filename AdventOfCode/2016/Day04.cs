@@ -12,7 +12,7 @@ namespace AdventOfCode._2016
 {
     [Problem("2016-04-01", MethodName = nameof(ExecutePart1))]
     [Problem("2016-04-02", MethodName = nameof(ExecutePart2))]
-    public class Day4
+    public class Day04
     {
         private record class Room(char[] Letters, int SectorId, char[]? Checksum)
         {

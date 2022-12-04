@@ -8,7 +8,7 @@ namespace AdventOfCode._2016
 {
     [Problem("2016-02-01", MethodName = nameof(ExecutePart1))]
     [Problem("2016-02-02", MethodName = nameof(ExecutePart2))]
-    public class Day2
+    public class Day02
     {
         private static string Execute(string input, string numpad)
         {

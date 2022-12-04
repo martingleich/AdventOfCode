@@ -9,7 +9,7 @@ namespace AdventOfCode._2016;
 
 [Problem("2016-06-01", MethodName = nameof(ExecutePart1))]
 [Problem("2016-06-02", MethodName = nameof(ExecutePart2))]
-public class Day6
+public class Day06
 {
     private const string TestString = @"
 eedadn

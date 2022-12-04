@@ -8,7 +8,7 @@ namespace AdventOfCode._2016
 {
     [Problem("2016-01-01", MethodName = nameof(ExecutePart1))]
     [Problem("2016-01-02", MethodName = nameof(ExecutePart2))]
-    public class Day1
+    public class Day01
     {
         private record struct Direction(int X, int Y)
         {

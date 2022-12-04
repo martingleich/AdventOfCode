@@ -9,7 +9,7 @@ namespace AdventOfCode._2016;
 
 [Problem("2016-08-01", MethodName = nameof(ExecutePart1))]
 [Problem("2016-08-02", MethodName = nameof(ExecutePart2))]
-public class Day8
+public class Day08
 {
     private abstract record class Command
     {

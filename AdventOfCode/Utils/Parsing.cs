@@ -1,36 +1,21 @@
 ﻿using System;
 using System.Collections.Immutable;
-using System.Data.Common;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode.Utils
 {
-    public abstract class Parser<T>
+    public interface IParser
+    {
+        Result<PartialParsed<object?>> ParseObject(Span input);
+    }
+    public abstract class Parser<T> : IParser
     {
         public T Parse(string input) => Parse(Span.FromString(input));
         public T Parse(Span span) => TryParse(span).Value;
         public Result<T> TryParse(string input) => TryParse(Span.FromString(input));
         public Result<T> TryParse(Span span) => ParsePartial(span).Map(v => v.Value);
         public abstract Result<PartialParsed<T>> ParsePartial(Span input);
-    }
-    public readonly struct Span
-    {
-        public readonly string Input;
-        public readonly int Cursor;
-        public readonly int Length;
-
-        private Span(string input, int cursor, int length)
-        {
-            Input = input ?? throw new ArgumentNullException(nameof(input));
-            Cursor = cursor;
-            Length = length;
-        }
-
-        public static Span FromString(string input) => new(input, 0, input.Length);
-        public Span Advance(int count) => new(Input, Cursor + count, Length - count);
-        public char this[int c] => Input[Cursor + c];
-        public Span Substring(int start, int end) => new(Input, Cursor + start, end - start);
-        public override string ToString() => Input.Substring(Cursor, Length);
+        Result<PartialParsed<object?>> IParser.ParseObject(Span input) => ParsePartial(input).Map(v => v.Map(v => (object?)v));
     }
 
     public readonly struct PartialParsed<T>
@@ -76,6 +61,82 @@ namespace AdventOfCode.Utils
         public static Parser<Match> ToParser(this Regex regex) => new RegexParser(regex);
         public static Parser<T> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
         public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => regex.ToParser().Select(converter);
+        public static Parser<T> FormattedString<T>(FormattableString str, Func<ImmutableArray<dynamic>, T> converter)
+        {
+            var fixedStrings = ImmutableArray.CreateBuilder<string>();
+            var parsers = ImmutableArray.CreateBuilder<IParser>();
+            var format = str.Format;
+            var args = str.GetArguments();
+            string fix = "";
+            for (int i = 0; i < format.Length; ++i)
+            {
+                if (i + 1 < format.Length && format[i] == '{' && format[i + 1] == '{')
+                {
+                    fix += '{';
+                    ++i;
+                }
+                else if (i + 1 < format.Length && format[i] == '}' && format[i + 1] == '}')
+                {
+                    fix += '{';
+                    ++i;
+                }
+                else if (format[i] == '{')
+                {
+                    // Read inner block
+                    fixedStrings.Add(fix);
+                    fix = "";
+                    ++i;
+                    var start = i;
+                    while (i < format.Length && format[i] != '}')
+                        ++i;
+                    var index = int.Parse(format[start..i]);
+                    if (args[index] is IParser parser)
+                        parsers.Add(parser);
+                    else
+                        throw new InvalidOperationException();
+                } else
+                {
+                    fix += format[i];
+                }
+            }
+            fixedStrings.Add(fix);
+            return new FormatStringParser(fixedStrings.ToImmutable(), parsers.ToImmutable()).Select(converter);
+        }
+        private sealed class FormatStringParser : Parser<ImmutableArray<dynamic>>
+        {
+            private readonly ImmutableArray<string> _fixed;
+            private readonly ImmutableArray<IParser> _parsers;
+
+            public FormatStringParser(ImmutableArray<string> @fixed, ImmutableArray<IParser> parsers)
+            {
+                _fixed = @fixed;
+                _parsers = parsers;
+            }
+
+            public override Result<PartialParsed<ImmutableArray<dynamic>>> ParsePartial(Span input)
+            {
+                var builder = ImmutableArray.CreateBuilder<dynamic>(_parsers.Length);
+                for(int i = 0; i < _fixed.Length + _parsers.Length; ++i)
+                {
+                    if (i % 2 == 0)
+                    {
+                        if (!input.StartsWith(_fixed[i / 2]))
+                            return default;
+                        input = input.Advance(_fixed[i / 2].Length);
+                    }
+                    else
+                    {
+                        var result = _parsers[i / 2].ParseObject(input);
+                        if (!result.TryGetValue(out var value))
+                            return default;
+                        input = value.Remaining;
+                        builder.Add(value.Value!); // We convert to dynamic anyways no point in caring about nullablitly
+                    }
+                }
+
+                return Result.Okay(PartialParsed.Create(builder.ToImmutable(), input));
+            }
+        }
 
         private sealed class OneOfParser<T> : Parser<T>
         {

@@ -8,7 +8,7 @@ namespace AdventOfCode._2016
 {
     [Problem("2016-05-01", MethodName = nameof(ExecutePart1))]
     [Problem("2016-05-02", MethodName = nameof(ExecutePart2))]
-    public class Day5
+    public class Day05
     {
         private static IEnumerable<byte[]> Generator(string arg)
         {

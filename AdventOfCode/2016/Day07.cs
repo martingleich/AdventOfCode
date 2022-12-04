@@ -8,7 +8,7 @@ namespace AdventOfCode._2016;
 
 [Problem("2016-07-01", MethodName = nameof(ExecutePart1))]
 [Problem("2016-07-02", MethodName = nameof(ExecutePart2))]
-public class Day7
+public class Day07
 {
     [TestCase("abba[mnop]qrst", true)]
     [TestCase("abcd[bddb]xyyx", false)]

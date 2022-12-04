@@ -8,7 +8,7 @@ namespace AdventOfCode._2016
 {
     [Problem("2016-03-01", MethodName = nameof(ExecutePart1))]
     [Problem("2016-03-02", MethodName = nameof(ExecutePart2))]
-    public class Day3
+    public class Day03
     {
         [TestCase(@"
 5 10 25

@@ -9,7 +9,7 @@ namespace AdventOfCode._2016;
 
 [Problem("2016-09-01", MethodName = nameof(ExecutePart1))]
 [Problem("2016-09-02", MethodName = nameof(ExecutePart2))]
-public class Day9
+public class Day09
 {
     private static readonly Parser<(int, int)> patternParser = Parser.MakeRegexParser(new Regex(@"(\d+)x(\d+)"), m => (int.Parse(m.Groups[1].ValueSpan), int.Parse(m.Groups[2].ValueSpan)));
 
