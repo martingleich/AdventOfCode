@@ -66,6 +66,18 @@ namespace AdventOfCode.Utils
             foreach (var maybeX in self)
                 yield return maybeX.Value;
         }
+        public static IEnumerable<T> IntersectAll<T>(this IEnumerable<IEnumerable<T>> self)
+        {
+            HashSet<T>? hashSet = null;
+            foreach (var list in self)
+            {
+                if (hashSet == null)
+                    hashSet = list.ToHashSet();
+                else
+                    hashSet.IntersectWith(list);
+            }
+            return hashSet ?? Enumerable.Empty<T>();
+        }
         public static IEnumerable<T> ToRectAndTranspose<T>(this IEnumerable<T> self, int width)
         {
             var result = new List<T>[width];
