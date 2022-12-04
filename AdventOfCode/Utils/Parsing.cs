@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode.Utils
@@ -40,8 +42,27 @@ namespace AdventOfCode.Utils
 
     public static class Parser
     {
-        public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"[a-zA-Z0-9]+"), m => m.Value);
-        public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"\d+"), m => int.Parse(m.Value));
+        public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+"), m => m.Value);
+        public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"^\d+"), m => int.Parse(m.Value));
+        public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)"), m => m.Value);
+        public static Parser<string> Fixed(string value) => new FixedParser(value);
+
+        private sealed class FixedParser : Parser<string>
+        {
+            private readonly string _value;
+
+            public FixedParser(string value)
+            {
+                _value = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            public override Result<PartialParsed<string>> ParsePartial(Span input)
+            {
+                if (input.StartsWith(_value))
+                    return Result.Okay(PartialParsed.Create(_value, input.Advance(_value.Length)));
+                return default;
+            }
+        }
 
         private sealed class RegexParser : Parser<Match>
         {
@@ -138,6 +159,63 @@ namespace AdventOfCode.Utils
             }
         }
 
+        public static Parser<IEnumerable<TValue>> DelimitedWith<TValue, TSeperator>(this Parser<TValue> value, Parser<TSeperator> seperator)
+            => new SeperatedParser<TSeperator, TValue>(seperator, value);
+        public static Parser<T> Trimmed<T>(this Parser<T> parser) => new TrimmedParser<T>(parser);
+        private sealed class TrimmedParser<TValue> : Parser<TValue>
+        {
+            private readonly Parser<TValue> _value;
+
+            public TrimmedParser(Parser<TValue> value)
+            {
+                _value = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            public override Result<PartialParsed<TValue>> ParsePartial(Span input)
+            {
+                while (input.Length > 0 && char.IsWhiteSpace(input.Input[input.Cursor]))
+                    input = input.Advance(1);
+                if (!_value.ParsePartial(input).TryGetValue(out var value))
+                    return default;
+                input = value.Remaining;
+                while (input.Length > 0 && char.IsWhiteSpace(input.Input[input.Cursor]))
+                    input = input.Advance(1);
+                return Result.Okay(PartialParsed.Create(value.Value, input));
+            }
+        }
+
+        private sealed class SeperatedParser<TSeperator, TValue> : Parser<IEnumerable<TValue>>
+        {
+            private readonly Parser<TSeperator> _seperator;
+            private readonly Parser<TValue> _value;
+
+            public SeperatedParser(Parser<TSeperator> seperator, Parser<TValue> value)
+            {
+                _seperator = seperator ?? throw new ArgumentNullException(nameof(seperator));
+                _value = value ?? throw new ArgumentNullException(nameof(value));
+            }
+
+            public override Result<PartialParsed<IEnumerable<TValue>>> ParsePartial(Span input)
+            {
+                var result = _value.ParsePartial(input);
+                if (!result.TryGetValue(out var firstValue))
+                    return Result.Okay(PartialParsed.Create(Enumerable.Empty<TValue>(), input));
+                var values = new List<TValue>
+                {
+                    firstValue.Value
+                };
+                input = firstValue.Remaining;
+                while (_seperator.ParsePartial(input).TryGetValue(out var sep))
+                {
+                    var result2 = _value.ParsePartial(sep.Remaining);
+                    if (!result2.TryGetValue(out var innerValue))
+                        return default; // Expected token after seperator.
+                    values.Add(innerValue.Value);
+                    input = innerValue.Remaining;
+                }
+                return Result.Okay(PartialParsed.Create(values.AsReadOnly().AsEnumerable(), input));
+            }
+        }
         private sealed class OneOfParser<T> : Parser<T>
         {
             private readonly ImmutableArray<Parser<T>> _alternatives;
