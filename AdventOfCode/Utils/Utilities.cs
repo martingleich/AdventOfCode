@@ -8,17 +8,32 @@ namespace AdventOfCode.Utils
 {
     public static class Utilities
     {
+        [Flags]
+        public enum SplitLineOptions
+        {
+            None = 0,
+            IgnoreEmpty = 1,
+            Trim = 2,
+        }
+        [Flags]
         public enum SplitOptions
         {
-            IgnoreEmpty,
+            None = 0,
+            IgnoreEmpty = 1,
         }
-        public static IEnumerable<string> SplitLines(this string self, bool ignoreEmpty)
+        public static IEnumerable<string> SplitLines(this string self, SplitLineOptions option)
         {
-            var result = Regex.Split(self, "\r\n|\r|\n").Select(s => s.Trim());
-            if (ignoreEmpty)
+            var result = Regex.Split(self, "\r\n|\r|\n").AsEnumerable();
+            if((option & SplitLineOptions.Trim) != 0)
+                result = result.Select(s => s.Trim());
+            if ((option & SplitLineOptions.IgnoreEmpty) != 0)
                 return result.Where(l => l.Length != 0);
             return result;
         }
+
+        public static IEnumerable<string> SplitLines(this string self, bool ignoreEmpty) =>
+            self.SplitLines(
+                SplitLineOptions.Trim | (ignoreEmpty ? SplitLineOptions.IgnoreEmpty : SplitLineOptions.None));
         public static IEnumerable<string> SplitLines(this string self) => self.SplitLines(true);
         public static IEnumerable<IEnumerable<T>> Split<T>(this IEnumerable<T> self, Func<T, bool> split, SplitOptions splitOptions = SplitOptions.IgnoreEmpty)
         {
@@ -55,13 +70,13 @@ namespace AdventOfCode.Utils
                 if (maybeX is T x)
                     yield return x;
         }
-        public static IEnumerable<T> WhereOkay<T>(this IEnumerable<Result<T>> self) where T : class
+        public static IEnumerable<T> WhereOkay<T>(this IEnumerable<Result<T>> self)
         {
             foreach (var maybeX in self)
                 if (maybeX.TryGetValue(out var value))
                     yield return value;
         }
-        public static IEnumerable<T> AllOkay<T>(this IEnumerable<Result<T>> self) where T : class
+        public static IEnumerable<T> AllOkay<T>(this IEnumerable<Result<T>> self)
         {
             foreach (var maybeX in self)
                 yield return maybeX.Value;

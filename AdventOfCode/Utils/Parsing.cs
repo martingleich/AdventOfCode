@@ -45,6 +45,30 @@ namespace AdventOfCode.Utils
         public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+"), m => m.Value);
         public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"^\d+"), m => int.Parse(m.Value));
         public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)"), m => m.Value);
+        public static readonly Parser<string> Whitespace = MakeRegexParser(new Regex(@"^\s+"), m => m.Value);
+
+        public static Parser<TResult> Return<TInput, TResult>(this Parser<TInput> parser, TResult result)
+            => new ReturnParser<TResult, TInput>(parser, result);
+
+        private sealed class ReturnParser<TResult, TInput> : Parser<TResult>
+        {
+            private readonly Parser<TInput> _parser;
+            private readonly TResult _value;
+
+            public ReturnParser(Parser<TInput> parser, TResult value)
+            {
+                _parser = parser;
+                _value = value;
+            }
+
+            public override Result<PartialParsed<TResult>> ParsePartial(Span input)
+            {
+                if (!_parser.ParsePartial(input).TryGetValue(out var parsed))
+                    return default;
+                return Result.Okay(PartialParsed.Create<TResult>(_value, parsed.Remaining));
+            }
+        }
+
         public static Parser<string> Fixed(string value) => new FixedParser(value);
 
         private sealed class FixedParser : Parser<string>
