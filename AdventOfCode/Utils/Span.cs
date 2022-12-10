@@ -19,7 +19,15 @@ namespace AdventOfCode.Utils
         public Span Advance(int count) => new(Input, Cursor + count, Length - count);
         public char this[int c] => Input[Cursor + c];
         public Span Substring(int start, int end) => new(Input, Cursor + start, end - start);
-        public bool StartsWith(string str) => Input[Cursor..(Cursor + Length)].StartsWith(str);
+        public bool StartsWith(string str)
+        {
+            if (Length < str.Length)
+                return false;
+            for (int i = 0; i < str.Length; ++i)
+                if (str[i] != Input[Cursor + i])
+                    return false;
+            return true;
+        }
         public override string ToString() => Input.Substring(Cursor, Length);
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode.Utils
@@ -16,6 +17,15 @@ namespace AdventOfCode.Utils
         public T Parse(Span span) => TryParse(span).Value;
         public Result<T> TryParse(string input) => TryParse(Span.FromString(input));
         public Result<T> TryParse(Span span) => ParsePartial(span).Map(v => v.Value);
+        public IEnumerable<T> ParseRepeated(string input)
+        {
+            var span = Span.FromString(input);
+            while (ParsePartial(span).TryGetValue(out var parsed))
+            {
+                yield return parsed.Value;
+                span = parsed.Remaining;
+            }
+        }
         public abstract Result<PartialParsed<T>> ParsePartial(Span input);
         Result<PartialParsed<object?>> IParser.ParseObject(Span input) => ParsePartial(input).Map(v => v.Map(v => (object?)v));
     }
@@ -42,10 +52,11 @@ namespace AdventOfCode.Utils
 
     public static class Parser
     {
-        public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+"), m => m.Value);
-        public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"^\d+"), m => int.Parse(m.Value));
-        public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)"), m => m.Value);
-        public static readonly Parser<string> Whitespace = MakeRegexParser(new Regex(@"^\s+"), m => m.Value);
+        public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+", RegexOptions.Compiled), m => m.Value);
+        public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"^\d+", RegexOptions.Compiled), m => int.Parse(m.Value));
+        public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)", RegexOptions.Compiled), m => m.Value);
+        public static readonly Parser<string> Whitespace = MakeRegexParser(new Regex(@"^\s+", RegexOptions.Compiled), m => m.Value);
+        public static readonly Parser<string> Line = MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
 
         public static Parser<TResult> Return<TInput, TResult>(this Parser<TInput> parser, TResult result)
             => new ReturnParser<TResult, TInput>(parser, result);
@@ -65,7 +76,7 @@ namespace AdventOfCode.Utils
             {
                 if (!_parser.ParsePartial(input).TryGetValue(out var parsed))
                     return default;
-                return Result.Okay(PartialParsed.Create<TResult>(_value, parsed.Remaining));
+                return Result.Okay(PartialParsed.Create(_value, parsed.Remaining));
             }
         }
 
@@ -103,9 +114,36 @@ namespace AdventOfCode.Utils
             }
         }
 
+        public static Parser<IEnumerable<T>> Repeat<T>(this Parser<T> parser) => new RepeatParser<T>(parser);
+        private sealed class RepeatParser<T> : Parser<IEnumerable<T>>
+        {
+            private readonly Parser<T> _parser;
+
+            public RepeatParser(Parser<T> parser)
+            {
+                _parser = parser;
+            }
+
+            public override Result<PartialParsed<IEnumerable<T>>> ParsePartial(Span input)
+            {
+                var results = default(List<T>?);
+                while (_parser.ParsePartial(input).TryGetValue(out var parsed))
+                {
+                    results ??= new List<T>();
+                    results.Add(parsed.Value);
+                    input = parsed.Remaining;
+                }
+                return Result.Okay(PartialParsed.Create(results?.AsReadOnly().AsEnumerable() ?? Enumerable.Empty<T>(), input));
+            }
+        }
+
+        public static Parser<T2> IgnoreThen<T1, T2>(this Parser<T1> first, Parser<T2> second) => from f in first
+                                                                                                 from s in second
+                                                                                                 select s;
         public static Parser<Match> ToParser(this Regex regex) => new RegexParser(regex);
         public static Parser<T> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
         public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => regex.ToParser().Select(converter);
+        public static Parser<Empty> FormattedString(FormattableString str) => FormattedString(str, x => default(Empty));
         public static Parser<T> FormattedString<T>(FormattableString str, Func<ImmutableArray<dynamic>, T> converter)
         {
             var fixedStrings = ImmutableArray.CreateBuilder<string>();
@@ -301,6 +339,7 @@ namespace AdventOfCode.Utils
             public override Result<PartialParsed<TResult>> ParsePartial(Span input) =>
                 _parser.ParsePartial(input).Map(t => t.Map(_map));
         }
+        
         public static Parser<TResult> SelectMany<TSource, TCollection, TResult>(this Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
             => new SelectManyParser<TSource, TCollection, TResult>(source, collectionSelector, resultSelector);
         private sealed class SelectManyParser<TSource, TCollection, TResult> : Parser<TResult>
@@ -327,6 +366,28 @@ namespace AdventOfCode.Utils
                     return default;
                 var realResult = _resultSelector(parsed.Value, nextParsed.Value);
                 return Result.Okay(PartialParsed.Create(realResult, nextParsed.Remaining));
+            }
+        }
+
+        public static Parser<T> Where<T>(this Parser<T> source, Func<T, bool> filter) => new WhereParser<T>(source, filter);
+        private sealed class WhereParser<T> : Parser<T>
+        {
+            private readonly Parser<T> _source;
+            private readonly Func<T, bool> _filter;
+
+            public WhereParser(Parser<T> source, Func<T, bool> filter)
+            {
+                _source = source ?? throw new ArgumentNullException(nameof(source));
+                _filter = filter ?? throw new ArgumentNullException(nameof(filter));
+            }
+
+            public override Result<PartialParsed<T>> ParsePartial(Span input)
+            {
+                if (!_source.ParsePartial(input).TryGetValue(out var parsed))
+                    return default;
+                if (!_filter(parsed.Value))
+                    return default;
+                return Result.Okay(parsed);
             }
         }
     }
