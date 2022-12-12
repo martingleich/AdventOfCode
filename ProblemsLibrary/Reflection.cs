@@ -42,12 +42,12 @@ namespace ProblemsLibrary
 			var execute = type.GetMethod(methodName, new[] { typeof(string) });
 			if (execute == null)
 				throw new ArgumentException($"type must contain a method {methodName}(string)");
+			var instance = Activator.CreateInstance(type);
 			object Execute(string input)
 			{
 				try
 				{
-					var instance = Activator.CreateInstance(type);
-					return execute.Invoke(instance, new[] { input })!;
+					return execute.Invoke(instance, new object[] { input })!;
 				}
 				catch (TargetInvocationException tie)
 				{

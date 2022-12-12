@@ -1,28 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace ProblemsLibrary
 {
 	public sealed class Hoster
 	{
-		public readonly ImmutableArray<Problem> Problems;
-		private readonly Func<string, string> DefaultInputFileProvider;
+		private readonly ImmutableArray<Problem> _problems;
 
-		public Hoster(
-			ImmutableArray<Problem> problems,
-			Func<string, string> defaultInputFileProvider)
-		{
-			Problems = problems;
-			DefaultInputFileProvider = defaultInputFileProvider;
+		public Hoster(ImmutableArray<Problem> problems) {
+			_problems = problems;
 		}
 
-		private Problem? TryGetProblem(string id) => Problems.FirstOrDefault(p => p.Id == id);
+		public Problem? GetProblem(string id) =>
+			_problems.FirstOrDefault(p => p.Id == id);
+		public IEnumerable<Problem> GetProblems(string s)
+		{
+			var parts = s.Split('-').ToArray();
+			return from problem in _problems
+				let parts2 = problem.Id.Split('-').ToArray()
+				where parts2.Length >= parts.Length && !parts.Where((t, i) => t != "*" && t != parts2[i]).Any()
+				select problem;
+		}
 
-		public bool RunTests(string id) => RunTests(Problems.Where(p => p.Id == id));
+		public void Run(Problem problems, string input)
+		{
+			if (!RunTests(new []{problems}))
+				SolveProblems(new []{problems}, input);
+		}
 
-		public bool RunTests(IEnumerable<Problem> problems)
+		private static bool RunTests(IEnumerable<Problem> problems)
 		{
 			var start = DateTime.Now;
 			int count = 0;
@@ -57,35 +66,16 @@ namespace ProblemsLibrary
 			return countFailed == 0;
 		}
 
-		public void SolveProblem(string id, string input)
+		private void SolveProblems(IEnumerable<Problem> problems, string input)
 		{
-			var problem = TryGetProblem(id) ?? throw new ArgumentException();
-			var inputData = TryReadInput(problem, input) ?? throw new ArgumentException();
-			SolveProblem(problem, inputData);
-		}
-
-		public void RunUserInteractive()
-		{
-			while (true)
+			foreach (var problem in problems)
 			{
-				var problem = ConsoleHelper.Prompt("Enter the index of the task: ", TryGetProblem);
-				var inputData = ConsoleHelper.Prompt("Enter the input of the task: ", input => TryReadInput(problem, input));
+				var inputData = TryReadInput(problem, input) ?? throw new ArgumentException();
 				SolveProblem(problem, inputData);
 			}
 		}
 
-		private string? TryReadInput(Problem problem, string input)
-		{
-			if (input.StartsWith("//"))
-			{
-				var path = input[2..];
-				if (path == "")
-					path = DefaultInputFileProvider(problem.Id);
-
-				return Utils.TryReadAllText(path);
-			}
-			return input;
-		}
+		private static string? TryReadInput(Problem problem, string input) => input.StartsWith("//") ? Utils.TryReadAllText(input[2..]) : input;
 
 		private static void SolveProblem(Problem problem, string inputData)
 		{
@@ -102,6 +92,52 @@ namespace ProblemsLibrary
             }
             var duration = DateTime.Now - start;
             Console.WriteLine($"Problem:{problem.Id} Input:{inputData}\nResult = {result}. Calculated in {duration}.");
+		}
+
+		public void Profile(ImmutableArray<KeyValuePair<Problem, string>> requests, int repeatCount)
+		{
+			const int innerRepeatCount = 5;
+			var watches = Enumerable.Range(0, requests.Length).Select(_ => new Stopwatch()).ToArray();
+			for(var i = 0; i < repeatCount; ++i)
+			{
+				var id = 0;
+				foreach (var (problem, input) in requests)
+				{
+					watches[id].Start();
+					for(int j = 0; j < innerRepeatCount; ++j)
+						problem.Execute(input);
+					watches[id].Stop();
+					++id;
+				}
+			}
+
+			var times = watches.Select(w => w.Elapsed / (repeatCount * innerRepeatCount)).ToArray();
+			var totalTime = times.Aggregate((a, b) => a + b);
+			var lines = Enumerable.Range(0, times.Length).Select(i => new[]
+			{
+				requests[i].Key.Id,
+				times[i].TotalMilliseconds.ToString(),
+				$"{((times[i] / totalTime) * 100):F2} %",
+			}).ToList();
+			lines.Insert(0, new []{"Id", "Time(ms)", "Share"});
+			foreach(var line in lines)
+				for (int i = 0; i < line.Length; ++i)
+					line[i] = $" {line[i]} ";
+			var columnSizes = Enumerable.Range(0, 3).Select(i => lines.Max(l => l[i].Length)).ToArray();
+			var sep = new string('-', columnSizes.Sum() + columnSizes.Length + 1);
+			Console.WriteLine();
+			Console.WriteLine(sep);
+			foreach (var line in lines)
+			{
+				Console.Write("|");
+				for (int i = 0; i < line.Length; ++i)
+				{
+					Console.Write(line[i].PadLeft(columnSizes[i]));
+					Console.Write("|");
+				}
+				Console.WriteLine();
+				Console.WriteLine(sep);
+			}
 		}
 	}
 }
