@@ -42,6 +42,7 @@ namespace ProblemsLibrary
 			var execute = type.GetMethod(methodName, new[] { typeof(string) });
 			if (execute == null)
 				throw new ArgumentException($"type must contain a method {methodName}(string)");
+			var delegateType = typeof(Func<,>).MakeGenericType(typeof(string), execute.ReturnType);
 			var instance = Activator.CreateInstance(type);
 			object Execute(string input)
 			{

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Mail;
 
 namespace AdventOfCode.Utils
 {
@@ -29,5 +30,17 @@ namespace AdventOfCode.Utils
         public Result<TResult> Map<TResult>(Func<T, TResult> map) => TryGetValue(out var value)
             ? Result.Okay(map(value))
             : Result<TResult>.Error;
+    }
+
+    public static class ResultEx
+    {
+        public static Result<T> MapExtractPartialParsed<T>(this Result<PartialParsed<T>> self) =>
+            self.TryGetValue(out var partialParsed) ? Result.Okay(partialParsed.Value) : default;
+        public static Result<PartialParsed<TResult>> MapPartialParsed<T, TResult>(this Result<PartialParsed<T>> self, Func<T, TResult> map) => self.TryGetValue(out var value)
+            ? Result.Okay(PartialParsed.Create(map(value.Value), value.Remaining))
+            : default;
+        public static Result<PartialParsed<object?>> CastToObject<T>(this Result<PartialParsed<T>> self) => self.TryGetValue(out var value)
+            ? Result.Okay(PartialParsed.Create((object?)value.Value, value.Remaining))
+            : default;
     }
 }

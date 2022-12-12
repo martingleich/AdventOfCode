@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace AdventOfCode.Utils
@@ -16,7 +15,7 @@ namespace AdventOfCode.Utils
         public T Parse(string input) => Parse(Span.FromString(input));
         public T Parse(Span span) => TryParse(span).Value;
         public Result<T> TryParse(string input) => TryParse(Span.FromString(input));
-        public Result<T> TryParse(Span span) => ParsePartial(span).Map(v => v.Value);
+        public Result<T> TryParse(Span span) => ParsePartial(span).MapExtractPartialParsed();
         public IEnumerable<T> ParseRepeated(string input)
         {
             var span = Span.FromString(input);
@@ -27,7 +26,7 @@ namespace AdventOfCode.Utils
             }
         }
         public abstract Result<PartialParsed<T>> ParsePartial(Span input);
-        Result<PartialParsed<object?>> IParser.ParseObject(Span input) => ParsePartial(input).Map(v => v.Map(v => (object?)v));
+        Result<PartialParsed<object?>> IParser.ParseObject(Span input) => ParsePartial(input).CastToObject();
     }
 
     public readonly struct PartialParsed<T>
@@ -42,6 +41,7 @@ namespace AdventOfCode.Utils
         }
 
         public PartialParsed<TResult> Map<TResult>(Func<T, TResult> map) => PartialParsed.Create(map(Value), Remaining);
+        public PartialParsed<object?> CastToObject() => PartialParsed.Create((object?)Value, Remaining);
         public PartialParsed<T> Advance(int count) => PartialParsed.Create(Value, Remaining.Advance(count));
     }
 
@@ -53,10 +53,34 @@ namespace AdventOfCode.Utils
     public static class Parser
     {
         public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+", RegexOptions.Compiled), m => m.Value);
-        public static readonly Parser<int> Int32 = MakeRegexParser(new Regex(@"^\d+", RegexOptions.Compiled), m => int.Parse(m.Value));
+        public static readonly Parser<int> Int32 = new Int32Parser();
         public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)", RegexOptions.Compiled), m => m.Value);
         public static readonly Parser<string> Whitespace = MakeRegexParser(new Regex(@"^\s+", RegexOptions.Compiled), m => m.Value);
         public static readonly Parser<string> Line = MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
+
+        private sealed class Int32Parser : Parser<int>
+        {
+            public override Result<PartialParsed<int>> ParsePartial(Span input)
+            {
+                var anyDigits = false;
+                var r = 0;
+                while (input.Length > 0 && TryReadDigit(input.Input[input.Cursor]) is { } d)
+                {
+                    r = r * 10 + d;
+                    input = input.Advance(1);
+                    anyDigits = true;
+                }
+
+                return anyDigits ? Result.Okay(PartialParsed.Create(r, input)) : default;
+            }
+
+            private int? TryReadDigit(char c)
+            {
+                if (c >= '0' && c <= '9')
+                    return (int)(c - '0');
+                return null;
+            }
+        }
 
         public static Parser<TResult> Return<TInput, TResult>(this Parser<TInput> parser, TResult result)
             => new ReturnParser<TResult, TInput>(parser, result);
@@ -144,7 +168,9 @@ namespace AdventOfCode.Utils
         public static Parser<T> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
         public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => regex.ToParser().Select(converter);
         public static Parser<Empty> FormattedString(FormattableString str) => FormattedString(str, x => default(Empty));
-        public static Parser<T> FormattedString<T>(FormattableString str, Func<ImmutableArray<dynamic>, T> converter)
+
+        public static Parser<T> FormattedString<T>(FormattableString str, Func<ImmutableArray<dynamic>, T> converter) => FormattedStringBasic(str).Select(converter);
+        private static Parser<ImmutableArray<object>> FormattedStringBasic(FormattableString str)
         {
             var fixedStrings = ImmutableArray.CreateBuilder<string>();
             var parsers = ImmutableArray.CreateBuilder<IParser>();
@@ -177,15 +203,18 @@ namespace AdventOfCode.Utils
                         parsers.Add(parser);
                     else
                         throw new InvalidOperationException();
-                } else
+                }
+                else
                 {
                     fix += format[i];
                 }
             }
+
             fixedStrings.Add(fix);
-            return new FormatStringParser(fixedStrings.ToImmutable(), parsers.ToImmutable()).Select(converter);
+            return new FormatStringParser(fixedStrings.ToImmutable(), parsers.ToImmutable());
         }
-        private sealed class FormatStringParser : Parser<ImmutableArray<dynamic>>
+        
+        private sealed class FormatStringParser : Parser<ImmutableArray<object>>
         {
             private readonly ImmutableArray<string> _fixed;
             private readonly ImmutableArray<IParser> _parsers;
@@ -196,10 +225,10 @@ namespace AdventOfCode.Utils
                 _parsers = parsers;
             }
 
-            public override Result<PartialParsed<ImmutableArray<dynamic>>> ParsePartial(Span input)
+            public override Result<PartialParsed<ImmutableArray<object>>> ParsePartial(Span input)
             {
-                var builder = ImmutableArray.CreateBuilder<dynamic>(_parsers.Length);
-                for(int i = 0; i < _fixed.Length + _parsers.Length; ++i)
+                var builder = ImmutableArray.CreateBuilder<object>(_parsers.Length);
+                for(var i = 0; i < _fixed.Length + _parsers.Length; ++i)
                 {
                     if (i % 2 == 0)
                     {
@@ -337,7 +366,7 @@ namespace AdventOfCode.Utils
             }
 
             public override Result<PartialParsed<TResult>> ParsePartial(Span input) =>
-                _parser.ParsePartial(input).Map(t => t.Map(_map));
+                _parser.ParsePartial(input).MapPartialParsed(_map);
         }
         
         public static Parser<TResult> SelectMany<TSource, TCollection, TResult>(this Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)

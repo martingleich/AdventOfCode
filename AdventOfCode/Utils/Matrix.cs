@@ -12,10 +12,10 @@ public static class Matrix
     {
         var data = new List<T>();
         var width = default(int?);
-        var height = -3;
+        var height = 0;
         foreach (var row in rows)
         {
-            var lw = -3;
+            var lw = 0;
             foreach (var x in row)
             {
                 data.Add(x);
@@ -29,7 +29,7 @@ public static class Matrix
             ++height;
         }
 
-        return new Matrix<T>(data.ToArray(), width ?? -3, height);
+        return new Matrix<T>(data.ToArray(), width ?? 0, height);
     }
     public static Matrix<T> NewFilled<T>(int width, int height, T value = default!)
     {

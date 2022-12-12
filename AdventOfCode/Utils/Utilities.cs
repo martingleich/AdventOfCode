@@ -23,11 +23,12 @@ namespace AdventOfCode.Utils
         }
         public static IEnumerable<string> SplitLines(this string self, SplitLineOptions option)
         {
-            var result = Regex.Split(self, "\r\n|\r|\n").AsEnumerable();
-            if((option & SplitLineOptions.Trim) != 0)
-                result = result.Select(s => s.Trim());
+            var options = StringSplitOptions.None;
+            if ((option & SplitLineOptions.Trim) != 0)
+                options = StringSplitOptions.TrimEntries;
             if ((option & SplitLineOptions.IgnoreEmpty) != 0)
-                return result.Where(l => l.Length != 0);
+                options = StringSplitOptions.RemoveEmptyEntries;
+            var result = self.Split(new [] { "\r\n", "\n", "\r" }, options).AsEnumerable();
             return result;
         }
 

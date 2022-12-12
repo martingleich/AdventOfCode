@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using AdventOfCode.Utils;
 
 namespace AdventOfCode
 {
@@ -23,7 +24,8 @@ namespace AdventOfCode
 
 				hoster.Run(problem, args[2]);
 				return 0;
-			} else if (mode == "profile")
+			}
+			else if (mode == "profile")
 			{
 				string FilenameProvider(string id)
 				{
@@ -43,7 +45,20 @@ namespace AdventOfCode
 				hoster.Profile(requests, repeatCount);
 				return 0;
 			}
-			
+			else if (mode == "test")
+			{
+				string FilenameProvider(string id)
+				{
+					var parts = id.Split('-');
+					return $"{parts[0]}-{parts[1]}.txt";
+				}
+
+				// Arg1: Problemlist
+				var problems = hoster.GetProblems(args[1]);
+				hoster.Test(problems);
+				return 0;
+			}
+
 			Console.Error.WriteLine($"Unknown mode: {args[0]}");
 			return 3;
 		}

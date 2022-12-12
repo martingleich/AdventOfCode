@@ -139,5 +139,10 @@ namespace ProblemsLibrary
 				Console.WriteLine(sep);
 			}
 		}
+
+		public void Test(IEnumerable<Problem> problems)
+		{
+			RunTests(problems);
+		}
 	}
 }
