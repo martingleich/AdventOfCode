@@ -38,7 +38,7 @@ $ ls
     {
         public void Execute(ref Navigator n);
     }
-    private sealed record CdUpCommand() : ICommand
+    private sealed record CdUpCommand : ICommand
     {
         public void Execute(ref Navigator n)
         {
@@ -46,7 +46,7 @@ $ ls
         }
     }
 
-    private sealed record CdRootCommand() : ICommand
+    private sealed record CdRootCommand : ICommand
     {
         public void Execute(ref Navigator n)
         {
@@ -93,9 +93,9 @@ $ ls
     private sealed record DirectoryNode(Dictionary<string, INode> Children, string Name) : INode
     {
         public static DirectoryNode CreateEmpty(string name) => new(new Dictionary<string, INode>(), name);
-        public void AddLsEntries(IEnumerable<ILsEntry> entires)
+        public void AddLsEntries(IEnumerable<ILsEntry> entries)
         {
-            foreach (var entry in entires)
+            foreach (var entry in entries)
                 if (!Children.ContainsKey(entry.Name))
                     Children[entry.Name] = entry.ToNode();
         }
@@ -138,7 +138,7 @@ $ ls
 
     class Navigator
     {
-        public static Navigator CreateRoot(DirectoryNode current) => new Navigator(current, null);
+        public static Navigator CreateRoot(DirectoryNode current) => new(current, null);
         private Navigator(DirectoryNode current, Navigator? parent)
         {
             Current = current;
@@ -147,10 +147,9 @@ $ ls
 
         public DirectoryNode Current { get; }
         public Navigator? Parent { get; }
-        public Navigator ChangeDirectory(string name) => new((DirectoryNode)Current.GetChildDirectory(name), this);
+        public Navigator ChangeDirectory(string name) => new(Current.GetChildDirectory(name), this);
         public Navigator Root => Parent?.Root ?? this;
-        public string Path => Parent != null ? Parent.Path + "/" + Current.Name : Current.Name;
-        public override string ToString() => Path;
+        public override string ToString() => Parent != null ? $"{Parent}/{Current.Name}" : Current.Name;
     }
 
     [TestCase(TestData, 95437)]
@@ -180,9 +179,9 @@ $ ls
     {
         var parserCommand = CreateCommandParser();
         var rootDir = DirectoryNode.CreateEmpty("");
-        var nagivator = Navigator.CreateRoot(rootDir);
+        var navigator = Navigator.CreateRoot(rootDir);
         foreach (var cmd in parserCommand.ParseRepeated(input))
-            cmd.Execute(ref nagivator);
+            cmd.Execute(ref navigator);
         return rootDir;
     }
     [TestCase(TestData, 24933642)]
