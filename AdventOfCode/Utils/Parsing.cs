@@ -54,10 +54,17 @@ namespace AdventOfCode.Utils
     {
         public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+", RegexOptions.Compiled), m => m.Value);
         public static readonly Parser<int> Int32 = new Int32Parser();
+        public static readonly Parser<int> SingleDigit = new SingleDigitParser();
         public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)", RegexOptions.Compiled), m => m.Value);
         public static readonly Parser<string> Whitespace = MakeRegexParser(new Regex(@"^\s+", RegexOptions.Compiled), m => m.Value);
         public static readonly Parser<string> Line = MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
 
+        private static int? TryReadDigit(char c)
+        {
+            if (c >= '0' && c <= '9')
+                return (int)(c - '0');
+            return null;
+        }
         private sealed class Int32Parser : Parser<int>
         {
             public override Result<PartialParsed<int>> ParsePartial(Span input)
@@ -73,12 +80,14 @@ namespace AdventOfCode.Utils
 
                 return anyDigits ? Result.Okay(PartialParsed.Create(r, input)) : default;
             }
-
-            private int? TryReadDigit(char c)
+        }
+        private sealed class SingleDigitParser : Parser<int>
+        {
+            public override Result<PartialParsed<int>> ParsePartial(Span input)
             {
-                if (c >= '0' && c <= '9')
-                    return (int)(c - '0');
-                return null;
+                if (input.Length > 0 && TryReadDigit(input[0]) is { } d)
+                    return Result.Okay(PartialParsed.Create(d, input.Advance(1)));
+                return default;
             }
         }
 
@@ -273,6 +282,12 @@ namespace AdventOfCode.Utils
                     input = input.Advance(1);
                 return Result.Okay(PartialParsed.Create(value.Value, input));
             }
+        }
+
+        public static Parser<Matrix<T>> Grid<T, TRowSeparator>(
+            this Parser<T> value, Parser<TRowSeparator> rowSeparator)
+        {
+            return value.Repeat().DelimitedWith(rowSeparator).Select(Matrix.FromRows);
         }
 
         private sealed class SeperatedParser<TSeperator, TValue> : Parser<IEnumerable<TValue>>
