@@ -32,10 +32,10 @@ enarar";
     private static string Execute(string input, bool modified)
     {
         var lines = input.SplitLines().ToArray();
-        var matrix = Matrix.FromRows<char, IEnumerable<char>>(lines);
-        Func<IEnumerable<char>, char>
-            colSelect = modified ? h => h.MostHistogram() : h => h.LeastHistogram();
-        return new string(matrix.Columns.Select(colSelect).ToArray());
+        var matrix = Matrix.FromRows(lines);
+        Func<Vector<char>, char>
+            colSelect = modified ? h => h.GetValues().MostHistogram() : h => h.GetValues().LeastHistogram();
+        return new string(matrix.GetColumns().Select(colSelect).ToArray());
     }
 
     [TestCase(TestString, "easter")]

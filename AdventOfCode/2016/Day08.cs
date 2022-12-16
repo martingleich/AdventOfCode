@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text.RegularExpressions;
 using AdventOfCode.Utils;
@@ -11,34 +12,27 @@ namespace AdventOfCode._2016;
 [Problem("2016-08-02", MethodName = nameof(ExecutePart2))]
 public class Day08
 {
-    private abstract record class Command
+    private abstract record Command
     {
-        public abstract void Update(Matrix<bool> matrix);
+        [Pure]
+        public abstract Matrix<bool> Update(Matrix<bool> matrix);
     }
-    private sealed record class RectCommand(int Width, int Height) : Command
+    private sealed record RectCommand(int Width, int Height) : Command
     {
-        public override void Update(Matrix<bool> matrix)
-        {
-            for (int r = 0; r < Height; ++r)
-                for (int c = 0; c < Width; ++c)
-                    matrix[c, r] = true;
-        }
+        public override Matrix<bool> Update(Matrix<bool> matrix)
+            => matrix.SetSubMatrix(0, 0, Matrix.Fill(Width, Height, true));
     }
 
-    private sealed record class RotateRowCommand(int Row, int Shift) : Command
+    private sealed record RotateRowCommand(int Row, int Shift) : Command
     {
-        public override void Update(Matrix<bool> matrix)
-        {
-            matrix.RotateRow(Row, Shift);
-        }
+        public override Matrix<bool> Update(Matrix<bool> matrix)
+            => matrix.MapRow(Row, v => v.Rotate(Shift));
     }
 
-    private sealed record class RotateColumnCommand(int Column, int Shift) : Command
+    private sealed record RotateColumnCommand(int Column, int Shift) : Command
     {
-        public override void Update(Matrix<bool> matrix)
-        {
-            matrix.RotateColumn(Column, Shift);
-        }
+        public override Matrix<bool> Update(Matrix<bool> matrix)
+            => matrix.MapColumn(Column, v => v.Rotate(Shift));
     }
 
     public static Matrix<bool> ExecuteCommon(string input, int width, int height)
@@ -48,9 +42,9 @@ public class Day08
         var parseRotateColumn = Parser.MakeRegexParser(new Regex(@"rotate column x=(\d+) by (\d+)"), m => (Command)new RotateColumnCommand(int.Parse(m.Groups[1].ValueSpan), int.Parse(m.Groups[2].ValueSpan)));
         var parseLine = Parser.OneOf(parseRect, parseRotateRow, parseRotateColumn);
         var commands = input.SplitLines().Select(parseLine.Parse).ToArray();
-        var matrix = Matrix.NewFilled(width, height, false);
+        var matrix = Matrix.Default<bool>(width, height);
         foreach (var cmd in commands)
-            cmd.Update(matrix);
+            matrix = cmd.Update(matrix);
         return matrix;
     }
     [TestCase(@"
@@ -60,11 +54,12 @@ rotate row y=0 by 4
 rotate column x=1 by 1
 ", 7, 3, 6)
         ]
-    public static int ExecutePart1_Testable(string input, int width, int height) => ExecuteCommon(input, width, height).RowMajor.Count(x => x);
+    public static int ExecutePart1_Testable(string input, int width, int height) => ExecuteCommon(input, width, height).GetValues().Count(x => x);
     public static int ExecutePart1(string input) => ExecutePart1_Testable(input, 50, 6);
     public static string ExecutePart2(string input)
     {
         var matrix = ExecuteCommon(input, 50, 6);
-        return Environment.NewLine + string.Join(Environment.NewLine, matrix.Rows.Select(r => new string(r.Select(x => x ? '#' : ' ').ToArray()))) + Environment.NewLine;
+        return Environment.NewLine + string.Join(Environment.NewLine,
+            matrix.GetRows().Select(r => new string(r.GetValues().Select(x => x ? '#' : ' ').ToArray()))) + Environment.NewLine;
     }
 }
