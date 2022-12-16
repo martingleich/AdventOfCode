@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using AdventOfCode.Utils;
 using ProblemsLibrary;
+
 // ReSharper disable StringLiteralTypo
 
 namespace AdventOfCode._2016;
@@ -11,7 +12,8 @@ namespace AdventOfCode._2016;
 [Problem("2016-09-02", MethodName = nameof(ExecutePart2))]
 public class Day09
 {
-    private static readonly Parser<(int, int)> patternParser = Parser.MakeRegexParser(new Regex(@"(\d+)x(\d+)"), m => (int.Parse(m.Groups[1].ValueSpan), int.Parse(m.Groups[2].ValueSpan)));
+    private static readonly Parser<(int, int)> patternParser = Parser.MakeRegexParser(new Regex(@"(\d+)x(\d+)"),
+        m => (int.Parse(m.Groups[1].ValueSpan), int.Parse(m.Groups[2].ValueSpan)));
 
     [TestCase("ADVENT", false, 6ul)]
     [TestCase("A(1x5)BC", false, 7ul)]
@@ -37,12 +39,12 @@ public class Day09
         {
             var (mul, value) = eval;
             var subLength = 0ul;
-            for (int i = 0; i < value.Length; ++i)
+            for (var i = 0; i < value.Length; ++i)
             {
                 var c = value[i];
                 if (c == '(')
                 {
-                    int start = i + 1;
+                    var start = i + 1;
                     while (i < value.Length && value[i] != ')')
                         ++i;
                     var pattern = patternParser.Parse(value.Substring(start, i));
@@ -58,10 +60,20 @@ public class Day09
                     ++subLength;
                 }
             }
+
             length += (ulong)mul * subLength;
         }
+
         return length;
     }
-    public static ulong ExecutePart1(string input) => EvalLen(input, false);
-    public static ulong ExecutePart2(string input) => EvalLen(input, true);
+
+    public static ulong ExecutePart1(string input)
+    {
+        return EvalLen(input, false);
+    }
+
+    public static ulong ExecutePart2(string input)
+    {
+        return EvalLen(input, true);
+    }
 }

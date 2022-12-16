@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using AdventOfCode.Utils;
 using ProblemsLibrary;
+
 // ReSharper disable StringLiteralTypo
 
 namespace AdventOfCode._2016;
@@ -39,7 +39,14 @@ enarar";
     }
 
     [TestCase(TestString, "easter")]
-    public static string ExecutePart1(string input) => Execute(input, false);
+    public static string ExecutePart1(string input)
+    {
+        return Execute(input, false);
+    }
+
     [TestCase(TestString, "advent")]
-    public static string ExecutePart2(string input) => Execute(input, true);
+    public static string ExecutePart2(string input)
+    {
+        return Execute(input, true);
+    }
 }

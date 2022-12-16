@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using ProblemsLibrary;
-
-namespace AdventOfCode._2016;
+﻿namespace AdventOfCode._2016;
 /*
 [Problem("2016-11-01", MethodName = nameof(ExecutePart1))]
 

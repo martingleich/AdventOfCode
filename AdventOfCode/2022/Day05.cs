@@ -23,13 +23,21 @@ move 2 from 2 to 1
 move 1 from 1 to 2";
 
     [TestCase(TestData, "CMZ")]
-    public static string ExecutePart1(string input) => ExecuteCommon(input, Command.Single);
+    public static string ExecutePart1(string input)
+    {
+        return ExecuteCommon(input, Command.Single);
+    }
+
     [TestCase(TestData, "MCD")]
-    public static string ExecutePart2(string input) => ExecuteCommon(input, Command.Multiple);
+    public static string ExecutePart2(string input)
+    {
+        return ExecuteCommon(input, Command.Multiple);
+    }
+
     private static string ExecuteCommon(string input, Func<int, int, int, Command> commandFactory)
     {
         var parts = input.SplitLines(Utilities.SplitLineOptions.None)
-            .Split(string.IsNullOrEmpty, Utilities.SplitOptions.IgnoreEmpty).ToArray();
+            .Split(string.IsNullOrEmpty).ToArray();
         var parserTableEntry = Parser.OneOf(
             Parser.Fixed("   ").Return(default(char?)),
             Parser.MakeRegexParser(new Regex(@"^\[.\]"), m => (char?)m.ValueSpan[1]));
@@ -38,7 +46,7 @@ move 1 from 1 to 2";
         var stacks = new Dictionary<int, Stack<char>>();
         foreach (var tableLine in tableValues.Reverse())
         {
-            int colId = 1;
+            var colId = 1;
             foreach (var item in tableLine)
             {
                 if (!stacks.TryGetValue(colId, out var column))
@@ -50,7 +58,8 @@ move 1 from 1 to 2";
             }
         }
 
-        var parserCommand = Parser.FormattedString($"move {Parser.Int32} from {Parser.Int32} to {Parser.Int32}",
+        var parserCommand = Parser.FormattedString(
+            $"move {Parser.UnsignedInteger} from {Parser.UnsignedInteger} to {Parser.UnsignedInteger}",
             m => commandFactory(m[0], m[1], m[2]));
         var commands = parts[1].Select(parserCommand.Parse);
         foreach (var command in commands)
@@ -61,8 +70,16 @@ move 1 from 1 to 2";
 
     public abstract record Command(int Count, int From, int To)
     {
-        public static Command Single(int count, int from, int to) => new CommandSingle(count, from, to);
-        public static Command Multiple(int count, int from, int to) => new CommandMultiple(count, from, to);
+        public static Command Single(int count, int from, int to)
+        {
+            return new CommandSingle(count, from, to);
+        }
+
+        public static Command Multiple(int count, int from, int to)
+        {
+            return new CommandMultiple(count, from, to);
+        }
+
         public abstract void Perform(IReadOnlyDictionary<int, Stack<char>> stacks);
 
         private sealed record CommandSingle(int Count, int From, int To) : Command(Count, From, To)

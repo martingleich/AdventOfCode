@@ -17,27 +17,40 @@ public class Day04
 6-6,4-6
 2-6,4-8";
 
+    private static IEnumerable<(Range, Range)> ParseInput(string input)
+    {
+        var parserRange = Parser.FormattedString($"{Parser.UnsignedInteger}-{Parser.UnsignedInteger}",
+            m => new Range(m[0], m[1]));
+        var parserElf = Parser.FormattedString<(Range, Range)>($"{parserRange},{parserRange}", m => (m[0], m[1]));
+        return input.SplitLines().Select(parserElf.Parse);
+    }
+
+    [TestCase(TEST_DATA, 2)]
+    public static int ExecutePart1(string input)
+    {
+        return ParseInput(input).Count(ranges =>
+            ranges.Item1.IsContainedIn(ranges.Item2) || ranges.Item2.IsContainedIn(ranges.Item1));
+    }
+
+    [TestCase(TEST_DATA, 4)]
+    public static int ExecutePart2(string input)
+    {
+        return ParseInput(input).Count(ranges =>
+            ranges.Item1.OverlapsWith(ranges.Item2));
+    }
+
     private readonly record struct Range(int From, int To)
     {
-        public bool IsContainedIn(Range r) => From >= r.From && To <= r.To;
+        public bool IsContainedIn(Range r)
+        {
+            return From >= r.From && To <= r.To;
+        }
+
         public bool OverlapsWith(Range r)
         {
             var commonFrom = Math.Max(From, r.From);
             var commonTo = Math.Min(To, r.To);
             return commonFrom <= commonTo;
-
         }
     }
-    private static IEnumerable<(Range, Range)> ParseInput(string input)
-    {
-        var parserRange = Parser.FormattedString($"{Parser.Int32}-{Parser.Int32}", m => new Range(m[0], m[1]));
-        var parserElf = Parser.FormattedString<(Range, Range)>($"{parserRange},{parserRange}", m => (m[0], m[1]));
-        return input.SplitLines().Select(parserElf.Parse);
-    }
-    [TestCase(TEST_DATA, 2)]
-    public static int ExecutePart1(string input) => ParseInput(input).Count(ranges =>
-        ranges.Item1.IsContainedIn(ranges.Item2) || ranges.Item2.IsContainedIn(ranges.Item1));
-    [TestCase(TEST_DATA, 4)]
-    public static int ExecutePart2(string input) => ParseInput(input).Count(ranges =>
-             ranges.Item1.OverlapsWith(ranges.Item2));
 }

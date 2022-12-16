@@ -1,7 +1,8 @@
-﻿using AdventOfCode.Utils;
-using ProblemsLibrary;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using AdventOfCode.Utils;
+using ProblemsLibrary;
+
 #pragma warning disable CS8509
 #pragma warning disable CS8524
 
@@ -28,12 +29,22 @@ public class Day01
 ";
 
     [TestCase(TEST_DATA, 24000)]
-    public static int ExecutePart1(string input) => AllCalories(input).Max();
-    [TestCase(TEST_DATA, 45000)]
-    public static int ExecutePart2(string input) => AllCalories(input).OrderByDescending(x => x).Take(3).Sum();
+    public static int ExecutePart1(string input)
+    {
+        return AllCalories(input).Max();
+    }
 
-    private static IEnumerable<int> AllCalories(string input) => input
-                .SplitLines(false)
-                .Split(string.IsNullOrWhiteSpace)
-                .Select(elf => elf.Sum(int.Parse));
+    [TestCase(TEST_DATA, 45000)]
+    public static int ExecutePart2(string input)
+    {
+        return AllCalories(input).OrderByDescending(x => x).Take(3).Sum();
+    }
+
+    private static IEnumerable<int> AllCalories(string input)
+    {
+        return input
+            .SplitLines(false)
+            .Split(string.IsNullOrWhiteSpace)
+            .Select(elf => elf.Sum(int.Parse));
+    }
 }

@@ -1,21 +1,23 @@
 ﻿using System;
 using System.Collections.Immutable;
 
-namespace ProblemsLibrary
+namespace ProblemsLibrary;
+
+public sealed class Problem
 {
-	public sealed class Problem
-	{
-		public readonly string Id;
-		public readonly ImmutableArray<TestCase> TestCases;
-		public readonly Func<string, object> Execute;
+    public readonly Func<string, object> Execute;
+    public readonly string Id;
+    public readonly ImmutableArray<TestCase> TestCases;
 
-		public Problem(string id, ImmutableArray<TestCase> testCases, Func<string, object> execute)
-		{
-			Id = id;
-			TestCases = testCases;
-			Execute = execute;
-		}
+    public Problem(string id, ImmutableArray<TestCase> testCases, Func<string, object> execute)
+    {
+        Id = id;
+        TestCases = testCases;
+        Execute = execute;
+    }
 
-		public override string ToString() => Id;
-	}
+    public override string ToString()
+    {
+        return Id;
+    }
 }

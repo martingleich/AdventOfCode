@@ -21,6 +21,7 @@ public class Day06
                 if (oldCount == 1)
                     --diffCount;
             }
+
             counts.TryGetValue(input[i], out var count);
             counts[input[i]] = count + 1;
             if (count == 0)
@@ -28,18 +29,27 @@ public class Day06
             if (diffCount == len)
                 return 1 + i;
         }
+
         throw new InvalidOperationException();
     }
+
     [TestCase("mjqjpqmgbljsphdztnvjfqwrcgsmlb", 7)]
     [TestCase("bvwbjplbgvbhsrlpgdmjqwftvncz", 5)]
     [TestCase("nppdvjthqldpwncqszvftbrmjlhg", 6)]
     [TestCase("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg", 10)]
     [TestCase("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw", 11)]
-    public static int ExecutePart1(string input) => ExecuteCommon(input, 4);
+    public static int ExecutePart1(string input)
+    {
+        return ExecuteCommon(input, 4);
+    }
+
     [TestCase("mjqjpqmgbljsphdztnvjfqwrcgsmlb", 19)]
     [TestCase("bvwbjplbgvbhsrlpgdmjqwftvncz", 23)]
     [TestCase("nppdvjthqldpwncqszvftbrmjlhg", 23)]
     [TestCase("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg", 29)]
     [TestCase("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw", 26)]
-    public static int ExecutePart2(string input) => ExecuteCommon(input, 14);
+    public static int ExecutePart2(string input)
+    {
+        return ExecuteCommon(input, 14);
+    }
 }

@@ -15,13 +15,14 @@ public class Day08
 65332
 33549
 35390";
-   
+
     [TestCase(TestData, 21)]
     public static int ExecutePart1(string input)
     {
         var grid = Parser.SingleDigit.Grid(Parser.NewLine).Parse(input.Trim());
         return Matrix.CombineMany((a, b) => a | b, grid.FromEachDirection(GetVisibility)).GetValues().Count(x => x);
     }
+
     [TestCase(TestData, 8)]
     public static int ExecutePart2(string input)
     {
@@ -42,11 +43,13 @@ public class Day08
                 if (values[j].CompareTo(height) >= 0)
                     break;
             }
+
             result.Add(count);
         }
 
         return Vector.FromEnumerable(result);
     }
+
     private static Vector<bool> GetVisibility<T>(Vector<T> values) where T : IComparable<T>
     {
         var result = new List<bool>();
@@ -62,6 +65,7 @@ public class Day08
                 result.Add(isVisible);
             }
         }
+
         return Vector.FromEnumerable(result);
     }
 }

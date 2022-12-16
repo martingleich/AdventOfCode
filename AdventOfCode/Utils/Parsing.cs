@@ -4,435 +4,569 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace AdventOfCode.Utils
+namespace AdventOfCode.Utils;
+
+public interface IParser
 {
-    public interface IParser
+    Result<PartialParsed<object?>> ParseObject(Span input);
+}
+
+public abstract class Parser<T> : IParser
+{
+    Result<PartialParsed<object?>> IParser.ParseObject(Span input)
     {
-        Result<PartialParsed<object?>> ParseObject(Span input);
+        return ParsePartial(input).CastToObject();
     }
-    public abstract class Parser<T> : IParser
+
+    public T Parse(string input)
     {
-        public T Parse(string input) => Parse(Span.FromString(input));
-        public T Parse(Span span) => TryParse(span).Value;
-        public Result<T> TryParse(string input) => TryParse(Span.FromString(input));
-        public Result<T> TryParse(Span span) => ParsePartial(span).MapExtractPartialParsed();
-        public IEnumerable<T> ParseRepeated(string input)
+        return Parse(Span.FromString(input));
+    }
+
+    public T Parse(Span span)
+    {
+        return TryParse(span).Value;
+    }
+
+    public Result<T> TryParse(string input)
+    {
+        return TryParse(Span.FromString(input));
+    }
+
+    public Result<T> TryParse(Span span)
+    {
+        return ParsePartial(span).MapExtractPartialParsed();
+    }
+
+    public IEnumerable<T> ParseRepeated(string input)
+    {
+        var span = Span.FromString(input);
+        while (ParsePartial(span).TryGetValue(out var parsed))
         {
-            var span = Span.FromString(input);
-            while (ParsePartial(span).TryGetValue(out var parsed))
+            yield return parsed.Value;
+            span = parsed.Remaining;
+        }
+    }
+
+    public IEnumerable<T> ParseValidLines(string input)
+    {
+        return input.SplitLines().Select(TryParse).WhereOkay();
+    }
+
+    public abstract Result<PartialParsed<T>> ParsePartial(Span input);
+}
+
+public readonly struct PartialParsed<T>
+{
+    public readonly T Value;
+    public readonly Span Remaining;
+
+    public PartialParsed(T value, Span remaining)
+    {
+        Value = value;
+        Remaining = remaining;
+    }
+
+    public PartialParsed<TResult> Map<TResult>(Func<T, TResult> map)
+    {
+        return PartialParsed.Create(map(Value), Remaining);
+    }
+
+    public PartialParsed<object?> CastToObject()
+    {
+        return PartialParsed.Create((object?)Value, Remaining);
+    }
+
+    public PartialParsed<T> Advance(int count)
+    {
+        return PartialParsed.Create(Value, Remaining.Advance(count));
+    }
+}
+
+public static class PartialParsed
+{
+    public static PartialParsed<T> Create<T>(T value, Span remaining)
+    {
+        return new PartialParsed<T>(value, remaining);
+    }
+}
+
+public static class Parser
+{
+    public static readonly Parser<string> AlphaNumeric =
+        MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+", RegexOptions.Compiled), m => m.Value);
+
+    public static readonly Parser<int> UnsignedInteger = new IntegerParser(true);
+    public static readonly Parser<int> SignedInteger = new IntegerParser(false);
+    public static readonly Parser<int> SingleDigit = new SingleDigitParser();
+
+    public static readonly Parser<string> NewLine =
+        MakeRegexParser(new Regex(@"^\n|(\r\n)", RegexOptions.Compiled), m => m.Value);
+
+    public static readonly Parser<string> Whitespace =
+        MakeRegexParser(new Regex(@"^\s+", RegexOptions.Compiled), m => m.Value);
+
+    public static readonly Parser<string> Line =
+        MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
+
+    private static int? TryReadDigit(char c)
+    {
+        if (c >= '0' && c <= '9')
+            return c - '0';
+        return null;
+    }
+
+    public static Parser<TResult> Return<TInput, TResult>(this Parser<TInput> parser, TResult result)
+    {
+        return new ReturnParser<TResult, TInput>(parser, result);
+    }
+
+    public static Parser<string> Fixed(string value)
+    {
+        return new FixedParser(value);
+    }
+
+    public static Parser<IEnumerable<T>> Repeat<T>(this Parser<T> parser)
+    {
+        return new RepeatParser<T>(parser);
+    }
+
+    public static Parser<T2> IgnoreThen<T1, T2>(this Parser<T1> first, Parser<T2> second)
+    {
+        return from f in first
+            from s in second
+            select s;
+    }
+
+    public static Parser<Match> ToParser(this Regex regex)
+    {
+        return new RegexParser(regex);
+    }
+
+    public static Parser<T> MakeRegexParser<T>(string regex, Func<Match, T> converter)
+    {
+        return MakeRegexParser(new Regex(regex), converter);
+    }
+
+    public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter)
+    {
+        return regex.ToParser().Select(converter);
+    }
+
+    public static Parser<Empty> FormattedString(FormattableString str)
+    {
+        return FormattedString(str, x => default(Empty));
+    }
+
+    public static Parser<T> FormattedString<T>(FormattableString str, Func<ImmutableArray<dynamic>, T> converter)
+    {
+        return FormattedStringBasic(str).Select(converter);
+    }
+
+    private static Parser<ImmutableArray<object>> FormattedStringBasic(FormattableString str)
+    {
+        var fixedStrings = ImmutableArray.CreateBuilder<string>();
+        var parsers = ImmutableArray.CreateBuilder<IParser>();
+        var format = str.Format;
+        var args = str.GetArguments();
+        var fix = "";
+        for (var i = 0; i < format.Length; ++i)
+            if (i + 1 < format.Length && format[i] == '{' && format[i + 1] == '{')
             {
-                yield return parsed.Value;
-                span = parsed.Remaining;
+                fix += '{';
+                ++i;
             }
-        }
-        public abstract Result<PartialParsed<T>> ParsePartial(Span input);
-        Result<PartialParsed<object?>> IParser.ParseObject(Span input) => ParsePartial(input).CastToObject();
-    }
-
-    public readonly struct PartialParsed<T>
-    {
-        public readonly T Value;
-        public readonly Span Remaining;
-
-        public PartialParsed(T value, Span remaining)
-        {
-            Value = value;
-            Remaining = remaining;
-        }
-
-        public PartialParsed<TResult> Map<TResult>(Func<T, TResult> map) => PartialParsed.Create(map(Value), Remaining);
-        public PartialParsed<object?> CastToObject() => PartialParsed.Create((object?)Value, Remaining);
-        public PartialParsed<T> Advance(int count) => PartialParsed.Create(Value, Remaining.Advance(count));
-    }
-
-    public static class PartialParsed
-    {
-        public static PartialParsed<T> Create<T>(T value, Span remaining) => new (value, remaining);
-    }
-
-    public static class Parser
-    {
-        public static readonly Parser<string> AlphaNumeric = MakeRegexParser(new Regex(@"^[a-zA-Z0-9]+", RegexOptions.Compiled), m => m.Value);
-        public static readonly Parser<int> Int32 = new Int32Parser();
-        public static readonly Parser<int> SingleDigit = new SingleDigitParser();
-        public static readonly Parser<string> NewLine = MakeRegexParser(new Regex(@"^\n|(\r\n)", RegexOptions.Compiled), m => m.Value);
-        public static readonly Parser<string> Whitespace = MakeRegexParser(new Regex(@"^\s+", RegexOptions.Compiled), m => m.Value);
-        public static readonly Parser<string> Line = MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
-
-        private static int? TryReadDigit(char c)
-        {
-            if (c >= '0' && c <= '9')
-                return (int)(c - '0');
-            return null;
-        }
-        private sealed class Int32Parser : Parser<int>
-        {
-            public override Result<PartialParsed<int>> ParsePartial(Span input)
+            else if (i + 1 < format.Length && format[i] == '}' && format[i + 1] == '}')
             {
-                var anyDigits = false;
-                var r = 0;
-                while (input.Length > 0 && TryReadDigit(input.Input[input.Cursor]) is { } d)
-                {
-                    r = r * 10 + d;
-                    input = input.Advance(1);
-                    anyDigits = true;
-                }
-
-                return anyDigits ? Result.Okay(PartialParsed.Create(r, input)) : default;
+                fix += '{';
+                ++i;
             }
-        }
-        private sealed class SingleDigitParser : Parser<int>
-        {
-            public override Result<PartialParsed<int>> ParsePartial(Span input)
+            else if (format[i] == '{')
             {
-                if (input.Length > 0 && TryReadDigit(input[0]) is { } d)
-                    return Result.Okay(PartialParsed.Create(d, input.Advance(1)));
+                // Read inner block
+                fixedStrings.Add(fix);
+                fix = "";
+                ++i;
+                var start = i;
+                while (i < format.Length && format[i] != '}')
+                    ++i;
+                var index = int.Parse(format[start..i]);
+                if (args[index] is IParser parser)
+                    parsers.Add(parser);
+                else
+                    throw new InvalidOperationException();
+            }
+            else
+            {
+                fix += format[i];
+            }
+
+        fixedStrings.Add(fix);
+        return new FormatStringParser(fixedStrings.ToImmutable(), parsers.ToImmutable());
+    }
+
+    public static Parser<IEnumerable<TValue>> DelimitedWith<TValue, TSeperator>(this Parser<TValue> value,
+        Parser<TSeperator> seperator)
+    {
+        return new SeperatedParser<TSeperator, TValue>(seperator, value);
+    }
+
+    public static Parser<T> Trimmed<T>(this Parser<T> parser)
+    {
+        return new TrimmedParser<T>(parser);
+    }
+
+    public static Parser<Matrix<T>> Grid<T, TRowSeparator>(
+        this Parser<T> value, Parser<TRowSeparator> rowSeparator)
+    {
+        return value.Repeat().DelimitedWith(rowSeparator).Select(Matrix.FromRows);
+    }
+
+    public static Parser<T> OneOf<T>(params Parser<T>[] parsers)
+    {
+        return new OneOfParser<T>(parsers.ToImmutableArray());
+    }
+
+    public static Parser<T> ThenFixed<T>(this Parser<T> parser, string @fixed)
+    {
+        return new ThenFixedParser<T>(parser, @fixed);
+    }
+
+    // Linq-Monad-Mapping
+    public static Parser<TResult> Select<TSource, TResult>(this Parser<TSource> parser, Func<TSource, TResult> map)
+    {
+        return new SelectParser<TSource, TResult>(parser, map);
+    }
+
+    public static Parser<TResult> SelectMany<TSource, TCollection, TResult>(this Parser<TSource> source,
+        Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
+    {
+        return new SelectManyParser<TSource, TCollection, TResult>(source, collectionSelector, resultSelector);
+    }
+
+    public static Parser<T> Where<T>(this Parser<T> source, Func<T, bool> filter)
+    {
+        return new WhereParser<T>(source, filter);
+    }
+
+    private sealed class IntegerParser : Parser<int>
+    {
+        private readonly bool _unsigned;
+
+        public IntegerParser(bool unsigned)
+        {
+            _unsigned = unsigned;
+        }
+
+        public override Result<PartialParsed<int>> ParsePartial(Span input)
+        {
+            bool sign;
+            if (!_unsigned && input.Length > 0 && (input[0] == '-' || input[0] == '+'))
+            {
+                sign = input[0] == '-';
+                input = input.Advance(1);
+            }
+            else
+            {
+                sign = false;
+            }
+
+            var anyDigits = false;
+            var r = 0L;
+            while (input.Length > 0 && TryReadDigit(input.Input[input.Cursor]) is { } d)
+            {
+                r = r * 10 + d;
+                input = input.Advance(1);
+                anyDigits = true;
+            }
+
+            var realValue = (int)(sign ? -r : r);
+            return anyDigits ? Result.Okay(PartialParsed.Create(realValue, input)) : default;
+        }
+    }
+
+    private sealed class SingleDigitParser : Parser<int>
+    {
+        public override Result<PartialParsed<int>> ParsePartial(Span input)
+        {
+            if (input.Length > 0 && TryReadDigit(input[0]) is { } d)
+                return Result.Okay(PartialParsed.Create(d, input.Advance(1)));
+            return default;
+        }
+    }
+
+    private sealed class ReturnParser<TResult, TInput> : Parser<TResult>
+    {
+        private readonly Parser<TInput> _parser;
+        private readonly TResult _value;
+
+        public ReturnParser(Parser<TInput> parser, TResult value)
+        {
+            _parser = parser;
+            _value = value;
+        }
+
+        public override Result<PartialParsed<TResult>> ParsePartial(Span input)
+        {
+            if (!_parser.ParsePartial(input).TryGetValue(out var parsed))
                 return default;
-            }
+            return Result.Okay(PartialParsed.Create(_value, parsed.Remaining));
+        }
+    }
+
+    private sealed class FixedParser : Parser<string>
+    {
+        private readonly string _value;
+
+        public FixedParser(string value)
+        {
+            _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public static Parser<TResult> Return<TInput, TResult>(this Parser<TInput> parser, TResult result)
-            => new ReturnParser<TResult, TInput>(parser, result);
-
-        private sealed class ReturnParser<TResult, TInput> : Parser<TResult>
+        public override Result<PartialParsed<string>> ParsePartial(Span input)
         {
-            private readonly Parser<TInput> _parser;
-            private readonly TResult _value;
+            if (input.StartsWith(_value))
+                return Result.Okay(PartialParsed.Create(_value, input.Advance(_value.Length)));
+            return default;
+        }
+    }
 
-            public ReturnParser(Parser<TInput> parser, TResult value)
-            {
-                _parser = parser;
-                _value = value;
-            }
+    private sealed class RegexParser : Parser<Match>
+    {
+        private readonly Regex _regex;
 
-            public override Result<PartialParsed<TResult>> ParsePartial(Span input)
-            {
-                if (!_parser.ParsePartial(input).TryGetValue(out var parsed))
-                    return default;
-                return Result.Okay(PartialParsed.Create(_value, parsed.Remaining));
-            }
+        public RegexParser(Regex regex)
+        {
+            _regex = regex ?? throw new ArgumentNullException(nameof(regex));
         }
 
-        public static Parser<string> Fixed(string value) => new FixedParser(value);
-
-        private sealed class FixedParser : Parser<string>
+        public override Result<PartialParsed<Match>> ParsePartial(Span input)
         {
-            private readonly string _value;
+            var m = _regex.Match(input.Input, input.Cursor, input.Length);
+            return m.Success ? Result.Okay(PartialParsed.Create(m, input.Advance(m.Length))) : default;
+        }
+    }
 
-            public FixedParser(string value)
-            {
-                _value = value ?? throw new ArgumentNullException(nameof(value));
-            }
+    private sealed class RepeatParser<T> : Parser<IEnumerable<T>>
+    {
+        private readonly Parser<T> _parser;
 
-            public override Result<PartialParsed<string>> ParsePartial(Span input)
-            {
-                if (input.StartsWith(_value))
-                    return Result.Okay(PartialParsed.Create(_value, input.Advance(_value.Length)));
-                return default;
-            }
+        public RepeatParser(Parser<T> parser)
+        {
+            _parser = parser;
         }
 
-        private sealed class RegexParser : Parser<Match>
+        public override Result<PartialParsed<IEnumerable<T>>> ParsePartial(Span input)
         {
-            private readonly Regex _regex;
+            var results = default(List<T>?);
+            while (_parser.ParsePartial(input).TryGetValue(out var parsed))
+            {
+                results ??= new List<T>();
+                results.Add(parsed.Value);
+                input = parsed.Remaining;
+            }
 
-            public RegexParser(Regex regex)
-            {
-                _regex = regex ?? throw new ArgumentNullException(nameof(regex));
-            }
-            public override Result<PartialParsed<Match>> ParsePartial(Span input)
-            {
-                var m = _regex.Match(input.Input, input.Cursor, input.Length);
-                return m.Success ? Result.Okay(PartialParsed.Create(m, input.Advance(m.Length))) : default;
-            }
+            return Result.Okay(PartialParsed.Create(results?.AsReadOnly().AsEnumerable() ?? Enumerable.Empty<T>(),
+                input));
+        }
+    }
+
+    private sealed class FormatStringParser : Parser<ImmutableArray<object>>
+    {
+        private readonly ImmutableArray<string> _fixed;
+        private readonly ImmutableArray<IParser> _parsers;
+
+        public FormatStringParser(ImmutableArray<string> @fixed, ImmutableArray<IParser> parsers)
+        {
+            _fixed = @fixed;
+            _parsers = parsers;
         }
 
-        public static Parser<IEnumerable<T>> Repeat<T>(this Parser<T> parser) => new RepeatParser<T>(parser);
-        private sealed class RepeatParser<T> : Parser<IEnumerable<T>>
+        public override Result<PartialParsed<ImmutableArray<object>>> ParsePartial(Span input)
         {
-            private readonly Parser<T> _parser;
-
-            public RepeatParser(Parser<T> parser)
-            {
-                _parser = parser;
-            }
-
-            public override Result<PartialParsed<IEnumerable<T>>> ParsePartial(Span input)
-            {
-                var results = default(List<T>?);
-                while (_parser.ParsePartial(input).TryGetValue(out var parsed))
+            var builder = ImmutableArray.CreateBuilder<object>(_parsers.Length);
+            for (var i = 0; i < _fixed.Length + _parsers.Length; ++i)
+                if (i % 2 == 0)
                 {
-                    results ??= new List<T>();
-                    results.Add(parsed.Value);
-                    input = parsed.Remaining;
-                }
-                return Result.Okay(PartialParsed.Create(results?.AsReadOnly().AsEnumerable() ?? Enumerable.Empty<T>(), input));
-            }
-        }
-
-        public static Parser<T2> IgnoreThen<T1, T2>(this Parser<T1> first, Parser<T2> second) => from f in first
-                                                                                                 from s in second
-                                                                                                 select s;
-        public static Parser<Match> ToParser(this Regex regex) => new RegexParser(regex);
-        public static Parser<T> MakeRegexParser<T>(string regex, Func<Match, T> converter) => MakeRegexParser(new Regex(regex), converter);
-        public static Parser<T> MakeRegexParser<T>(Regex regex, Func<Match, T> converter) => regex.ToParser().Select(converter);
-        public static Parser<Empty> FormattedString(FormattableString str) => FormattedString(str, x => default(Empty));
-
-        public static Parser<T> FormattedString<T>(FormattableString str, Func<ImmutableArray<dynamic>, T> converter) => FormattedStringBasic(str).Select(converter);
-        private static Parser<ImmutableArray<object>> FormattedStringBasic(FormattableString str)
-        {
-            var fixedStrings = ImmutableArray.CreateBuilder<string>();
-            var parsers = ImmutableArray.CreateBuilder<IParser>();
-            var format = str.Format;
-            var args = str.GetArguments();
-            string fix = "";
-            for (int i = 0; i < format.Length; ++i)
-            {
-                if (i + 1 < format.Length && format[i] == '{' && format[i + 1] == '{')
-                {
-                    fix += '{';
-                    ++i;
-                }
-                else if (i + 1 < format.Length && format[i] == '}' && format[i + 1] == '}')
-                {
-                    fix += '{';
-                    ++i;
-                }
-                else if (format[i] == '{')
-                {
-                    // Read inner block
-                    fixedStrings.Add(fix);
-                    fix = "";
-                    ++i;
-                    var start = i;
-                    while (i < format.Length && format[i] != '}')
-                        ++i;
-                    var index = int.Parse(format[start..i]);
-                    if (args[index] is IParser parser)
-                        parsers.Add(parser);
-                    else
-                        throw new InvalidOperationException();
+                    if (!input.StartsWith(_fixed[i / 2]))
+                        return default;
+                    input = input.Advance(_fixed[i / 2].Length);
                 }
                 else
                 {
-                    fix += format[i];
-                }
-            }
-
-            fixedStrings.Add(fix);
-            return new FormatStringParser(fixedStrings.ToImmutable(), parsers.ToImmutable());
-        }
-        
-        private sealed class FormatStringParser : Parser<ImmutableArray<object>>
-        {
-            private readonly ImmutableArray<string> _fixed;
-            private readonly ImmutableArray<IParser> _parsers;
-
-            public FormatStringParser(ImmutableArray<string> @fixed, ImmutableArray<IParser> parsers)
-            {
-                _fixed = @fixed;
-                _parsers = parsers;
-            }
-
-            public override Result<PartialParsed<ImmutableArray<object>>> ParsePartial(Span input)
-            {
-                var builder = ImmutableArray.CreateBuilder<object>(_parsers.Length);
-                for(var i = 0; i < _fixed.Length + _parsers.Length; ++i)
-                {
-                    if (i % 2 == 0)
-                    {
-                        if (!input.StartsWith(_fixed[i / 2]))
-                            return default;
-                        input = input.Advance(_fixed[i / 2].Length);
-                    }
-                    else
-                    {
-                        var result = _parsers[i / 2].ParseObject(input);
-                        if (!result.TryGetValue(out var value))
-                            return default;
-                        input = value.Remaining;
-                        builder.Add(value.Value!); // We convert to dynamic anyways no point in caring about nullablitly
-                    }
+                    var result = _parsers[i / 2].ParseObject(input);
+                    if (!result.TryGetValue(out var value))
+                        return default;
+                    input = value.Remaining;
+                    builder.Add(value.Value!); // We convert to dynamic anyways no point in caring about nullablitly
                 }
 
-                return Result.Okay(PartialParsed.Create(builder.ToImmutable(), input));
-            }
+            return Result.Okay(PartialParsed.Create(builder.ToImmutable(), input));
+        }
+    }
+
+    private sealed class TrimmedParser<TValue> : Parser<TValue>
+    {
+        private readonly Parser<TValue> _value;
+
+        public TrimmedParser(Parser<TValue> value)
+        {
+            _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public static Parser<IEnumerable<TValue>> DelimitedWith<TValue, TSeperator>(this Parser<TValue> value, Parser<TSeperator> seperator)
-            => new SeperatedParser<TSeperator, TValue>(seperator, value);
-        public static Parser<T> Trimmed<T>(this Parser<T> parser) => new TrimmedParser<T>(parser);
-        private sealed class TrimmedParser<TValue> : Parser<TValue>
+        public override Result<PartialParsed<TValue>> ParsePartial(Span input)
         {
-            private readonly Parser<TValue> _value;
-
-            public TrimmedParser(Parser<TValue> value)
-            {
-                _value = value ?? throw new ArgumentNullException(nameof(value));
-            }
-
-            public override Result<PartialParsed<TValue>> ParsePartial(Span input)
-            {
-                while (input.Length > 0 && char.IsWhiteSpace(input.Input[input.Cursor]))
-                    input = input.Advance(1);
-                if (!_value.ParsePartial(input).TryGetValue(out var value))
-                    return default;
-                input = value.Remaining;
-                while (input.Length > 0 && char.IsWhiteSpace(input.Input[input.Cursor]))
-                    input = input.Advance(1);
-                return Result.Okay(PartialParsed.Create(value.Value, input));
-            }
-        }
-
-        public static Parser<Matrix<T>> Grid<T, TRowSeparator>(
-            this Parser<T> value, Parser<TRowSeparator> rowSeparator)
-        {
-            return value.Repeat().DelimitedWith(rowSeparator).Select(Matrix.FromRows);
-        }
-
-        private sealed class SeperatedParser<TSeperator, TValue> : Parser<IEnumerable<TValue>>
-        {
-            private readonly Parser<TSeperator> _seperator;
-            private readonly Parser<TValue> _value;
-
-            public SeperatedParser(Parser<TSeperator> seperator, Parser<TValue> value)
-            {
-                _seperator = seperator ?? throw new ArgumentNullException(nameof(seperator));
-                _value = value ?? throw new ArgumentNullException(nameof(value));
-            }
-
-            public override Result<PartialParsed<IEnumerable<TValue>>> ParsePartial(Span input)
-            {
-                var result = _value.ParsePartial(input);
-                if (!result.TryGetValue(out var firstValue))
-                    return Result.Okay(PartialParsed.Create(Enumerable.Empty<TValue>(), input));
-                var values = new List<TValue>
-                {
-                    firstValue.Value
-                };
-                input = firstValue.Remaining;
-                while (_seperator.ParsePartial(input).TryGetValue(out var sep))
-                {
-                    var result2 = _value.ParsePartial(sep.Remaining);
-                    if (!result2.TryGetValue(out var innerValue))
-                        return default; // Expected token after seperator.
-                    values.Add(innerValue.Value);
-                    input = innerValue.Remaining;
-                }
-                return Result.Okay(PartialParsed.Create(values.AsReadOnly().AsEnumerable(), input));
-            }
-        }
-        private sealed class OneOfParser<T> : Parser<T>
-        {
-            private readonly ImmutableArray<Parser<T>> _alternatives;
-
-            public OneOfParser(ImmutableArray<Parser<T>> alternatives)
-            {
-                _alternatives = alternatives;
-            }
-
-            public override Result<PartialParsed<T>> ParsePartial(Span input)
-            {
-                foreach (var parser in _alternatives)
-                {
-                    var result = parser.ParsePartial(input);
-                    if (result.HasValue)
-                        return result;
-                }
+            while (input.Length > 0 && char.IsWhiteSpace(input.Input[input.Cursor]))
+                input = input.Advance(1);
+            if (!_value.ParsePartial(input).TryGetValue(out var value))
                 return default;
-            }
+            input = value.Remaining;
+            while (input.Length > 0 && char.IsWhiteSpace(input.Input[input.Cursor]))
+                input = input.Advance(1);
+            return Result.Okay(PartialParsed.Create(value.Value, input));
+        }
+    }
+
+    private sealed class SeperatedParser<TSeperator, TValue> : Parser<IEnumerable<TValue>>
+    {
+        private readonly Parser<TSeperator> _seperator;
+        private readonly Parser<TValue> _value;
+
+        public SeperatedParser(Parser<TSeperator> seperator, Parser<TValue> value)
+        {
+            _seperator = seperator ?? throw new ArgumentNullException(nameof(seperator));
+            _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public static Parser<T> OneOf<T>(params Parser<T>[] parsers) => new OneOfParser<T>(parsers.ToImmutableArray());
-
-        public static Parser<T> ThenFixed<T>(this Parser<T> parser, string @fixed)
-            => new ThenFixedParser<T>(parser, @fixed);
-        private sealed class ThenFixedParser<T> : Parser<T>
+        public override Result<PartialParsed<IEnumerable<TValue>>> ParsePartial(Span input)
         {
-            private readonly Parser<T> _parser;
-            private readonly string _fixed;
-
-            public ThenFixedParser(Parser<T> parser, string @fixed)
+            var result = _value.ParsePartial(input);
+            if (!result.TryGetValue(out var firstValue))
+                return Result.Okay(PartialParsed.Create(Enumerable.Empty<TValue>(), input));
+            var values = new List<TValue>
             {
-                _parser = parser;
-                _fixed = @fixed;
+                firstValue.Value
+            };
+            input = firstValue.Remaining;
+            while (_seperator.ParsePartial(input).TryGetValue(out var sep))
+            {
+                var result2 = _value.ParsePartial(sep.Remaining);
+                if (!result2.TryGetValue(out var innerValue))
+                    return default; // Expected token after seperator.
+                values.Add(innerValue.Value);
+                input = innerValue.Remaining;
             }
 
-            public override Result<PartialParsed<T>> ParsePartial(Span input)
-            {
-                return _parser.ParsePartial(input).TryGetValue(out var parsed) &&
-                       parsed.Remaining.Input[parsed.Remaining.Cursor..(parsed.Remaining.Cursor+parsed.Remaining.Length)].StartsWith(_fixed)
-                    ? Result.Okay(parsed.Advance(_fixed.Length))
-                    : default;
-            }
+            return Result.Okay(PartialParsed.Create(values.AsReadOnly().AsEnumerable(), input));
+        }
+    }
+
+    private sealed class OneOfParser<T> : Parser<T>
+    {
+        private readonly ImmutableArray<Parser<T>> _alternatives;
+
+        public OneOfParser(ImmutableArray<Parser<T>> alternatives)
+        {
+            _alternatives = alternatives;
         }
 
-        // Linq-Monad-Mapping
-        public static Parser<TResult> Select<TSource, TResult>(this Parser<TSource> parser, Func<TSource, TResult> map)
-            => new SelectParser<TSource, TResult>(parser, map);
-        private sealed class SelectParser<TSource, TResult> : Parser<TResult>
+        public override Result<PartialParsed<T>> ParsePartial(Span input)
         {
-            private readonly Parser<TSource> _parser;
-            private readonly Func<TSource, TResult> _map;
-            public SelectParser(Parser<TSource> parser, Func<TSource, TResult> map)
+            foreach (var parser in _alternatives)
             {
-                _parser = parser;
-                _map = map;
+                var result = parser.ParsePartial(input);
+                if (result.HasValue)
+                    return result;
             }
 
-            public override Result<PartialParsed<TResult>> ParsePartial(Span input) =>
-                _parser.ParsePartial(input).MapPartialParsed(_map);
+            return default;
         }
-        
-        public static Parser<TResult> SelectMany<TSource, TCollection, TResult>(this Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
-            => new SelectManyParser<TSource, TCollection, TResult>(source, collectionSelector, resultSelector);
-        private sealed class SelectManyParser<TSource, TCollection, TResult> : Parser<TResult>
+    }
+
+    private sealed class ThenFixedParser<T> : Parser<T>
+    {
+        private readonly string _fixed;
+        private readonly Parser<T> _parser;
+
+        public ThenFixedParser(Parser<T> parser, string @fixed)
         {
-            private readonly Parser<TSource> _source;
-            private readonly Func<TSource, Parser<TCollection>> _collectionSelector;
-            private readonly Func<TSource, TCollection, TResult> _resultSelector;
-
-            public SelectManyParser(Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector, Func<TSource, TCollection, TResult> resultSelector)
-            {
-                _source = source ?? throw new ArgumentNullException(nameof(source));
-                _collectionSelector = collectionSelector ?? throw new ArgumentNullException(nameof(collectionSelector));
-                _resultSelector = resultSelector ?? throw new ArgumentNullException(nameof(resultSelector));
-            }
-
-            public override Result<PartialParsed<TResult>> ParsePartial(Span input)
-            {
-                var result = _source.ParsePartial(input);
-                if (!result.TryGetValue(out var parsed))
-                    return default;
-                var nextParser = _collectionSelector(parsed.Value);
-                var subResult = nextParser.ParsePartial(parsed.Remaining);
-                if(!subResult.TryGetValue(out var nextParsed))
-                    return default;
-                var realResult = _resultSelector(parsed.Value, nextParsed.Value);
-                return Result.Okay(PartialParsed.Create(realResult, nextParsed.Remaining));
-            }
+            _parser = parser;
+            _fixed = @fixed;
         }
 
-        public static Parser<T> Where<T>(this Parser<T> source, Func<T, bool> filter) => new WhereParser<T>(source, filter);
-        private sealed class WhereParser<T> : Parser<T>
+        public override Result<PartialParsed<T>> ParsePartial(Span input)
         {
-            private readonly Parser<T> _source;
-            private readonly Func<T, bool> _filter;
+            return _parser.ParsePartial(input).TryGetValue(out var parsed) &&
+                   parsed.Remaining.Input[parsed.Remaining.Cursor..(parsed.Remaining.Cursor + parsed.Remaining.Length)]
+                       .StartsWith(_fixed)
+                ? Result.Okay(parsed.Advance(_fixed.Length))
+                : default;
+        }
+    }
 
-            public WhereParser(Parser<T> source, Func<T, bool> filter)
-            {
-                _source = source ?? throw new ArgumentNullException(nameof(source));
-                _filter = filter ?? throw new ArgumentNullException(nameof(filter));
-            }
+    private sealed class SelectParser<TSource, TResult> : Parser<TResult>
+    {
+        private readonly Func<TSource, TResult> _map;
+        private readonly Parser<TSource> _parser;
 
-            public override Result<PartialParsed<T>> ParsePartial(Span input)
-            {
-                if (!_source.ParsePartial(input).TryGetValue(out var parsed))
-                    return default;
-                if (!_filter(parsed.Value))
-                    return default;
-                return Result.Okay(parsed);
-            }
+        public SelectParser(Parser<TSource> parser, Func<TSource, TResult> map)
+        {
+            _parser = parser;
+            _map = map;
+        }
+
+        public override Result<PartialParsed<TResult>> ParsePartial(Span input)
+        {
+            return _parser.ParsePartial(input).MapPartialParsed(_map);
+        }
+    }
+
+    private sealed class SelectManyParser<TSource, TCollection, TResult> : Parser<TResult>
+    {
+        private readonly Func<TSource, Parser<TCollection>> _collectionSelector;
+        private readonly Func<TSource, TCollection, TResult> _resultSelector;
+        private readonly Parser<TSource> _source;
+
+        public SelectManyParser(Parser<TSource> source, Func<TSource, Parser<TCollection>> collectionSelector,
+            Func<TSource, TCollection, TResult> resultSelector)
+        {
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            _collectionSelector = collectionSelector ?? throw new ArgumentNullException(nameof(collectionSelector));
+            _resultSelector = resultSelector ?? throw new ArgumentNullException(nameof(resultSelector));
+        }
+
+        public override Result<PartialParsed<TResult>> ParsePartial(Span input)
+        {
+            var result = _source.ParsePartial(input);
+            if (!result.TryGetValue(out var parsed))
+                return default;
+            var nextParser = _collectionSelector(parsed.Value);
+            var subResult = nextParser.ParsePartial(parsed.Remaining);
+            if (!subResult.TryGetValue(out var nextParsed))
+                return default;
+            var realResult = _resultSelector(parsed.Value, nextParsed.Value);
+            return Result.Okay(PartialParsed.Create(realResult, nextParsed.Remaining));
+        }
+    }
+
+    private sealed class WhereParser<T> : Parser<T>
+    {
+        private readonly Func<T, bool> _filter;
+        private readonly Parser<T> _source;
+
+        public WhereParser(Parser<T> source, Func<T, bool> filter)
+        {
+            _source = source ?? throw new ArgumentNullException(nameof(source));
+            _filter = filter ?? throw new ArgumentNullException(nameof(filter));
+        }
+
+        public override Result<PartialParsed<T>> ParsePartial(Span input)
+        {
+            if (!_source.ParsePartial(input).TryGetValue(out var parsed))
+                return default;
+            if (!_filter(parsed.Value))
+                return default;
+            return Result.Okay(parsed);
         }
     }
 }

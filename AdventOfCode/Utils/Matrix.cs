@@ -25,7 +25,7 @@ public readonly struct Matrix<T>
 
     private T[,] GetMutableCopy()
     {
-        var copy = new T[NumColumns,NumRows];
+        var copy = new T[NumColumns, NumRows];
         Buffer.BlockCopy(_values, 0, copy, 0, NumColumns * NumRows);
         return copy;
     }
@@ -64,7 +64,10 @@ public readonly struct Matrix<T>
     }
 
     [Pure]
-    public IEnumerable<T> GetValues() => _values.Cast<T>();
+    public IEnumerable<T> GetValues()
+    {
+        return _values.Cast<T>();
+    }
 
     [Pure]
     public Vector<T> GetRow(int row)
@@ -88,16 +91,17 @@ public readonly struct Matrix<T>
     public Matrix<T> SetColumn(int column, Vector<T> values)
     {
         var copy = GetMutableCopy();
-        for(var srcRow = 0; srcRow < values.Length; ++srcRow)
+        for (var srcRow = 0; srcRow < values.Length; ++srcRow)
             copy[column, srcRow] = values[srcRow];
 
         return new Matrix<T>(copy);
     }
+
     [Pure]
     public Matrix<T> SetRow(int row, Vector<T> values)
     {
         var copy = GetMutableCopy();
-        for(var srcColumn = 0; srcColumn < values.Length; ++srcColumn)
+        for (var srcColumn = 0; srcColumn < values.Length; ++srcColumn)
             copy[srcColumn, row] = values[srcColumn];
         return new Matrix<T>(copy);
     }
@@ -106,41 +110,66 @@ public readonly struct Matrix<T>
     public Matrix<T> SetSubMatrix(int row, int column, Matrix<T> values)
     {
         var copy = GetMutableCopy();
-        for(var subRow = 0; subRow < values.NumRows; ++subRow)
+        for (var subRow = 0; subRow < values.NumRows; ++subRow)
         for (var subColumn = 0; subColumn < values.NumColumns; ++subColumn)
             copy[column + subColumn, row + subRow] = values[subColumn, subRow];
         return new Matrix<T>(copy);
     }
 
     [Pure]
-    public IEnumerable<Vector<T>> GetRows() => Enumerable.Range(0, NumRows).Select(GetRow);
+    public IEnumerable<Vector<T>> GetRows()
+    {
+        return Enumerable.Range(0, NumRows).Select(GetRow);
+    }
+
     [Pure]
-    public IEnumerable<Vector<T>> GetColumns() => Enumerable.Range(0, NumColumns).Select(GetColumn);
-    
+    public IEnumerable<Vector<T>> GetColumns()
+    {
+        return Enumerable.Range(0, NumColumns).Select(GetColumn);
+    }
+
     [Pure]
     public Matrix<TResult> MapValues<TResult>(Func<T, TResult> map)
     {
         var self = this;
         return Matrix.FromFunction(NumColumns, NumRows, (c, r) => map(self[c, r]));
     }
+
     [Pure]
     public Matrix<TResult> MapRows<TResult>(Func<Vector<T>, Vector<TResult>> map)
     {
         return Matrix<TResult>.FromEnumerableOfVectors(GetRows().Select(map), Matrix.Ordering.RowMajor);
     }
+
     [Pure]
     public Matrix<TResult> MapColumns<TResult>(Func<Vector<T>, Vector<TResult>> map)
     {
         return Matrix<TResult>.FromEnumerableOfVectors(GetColumns().Select(map), Matrix.Ordering.ColumnMajor);
     }
+
     [Pure]
-    public Matrix<T> MapRow(int row, Func<Vector<T>, Vector<T>> map) => SetRow(row, map(GetRow(row)));
+    public Matrix<T> MapRow(int row, Func<Vector<T>, Vector<T>> map)
+    {
+        return SetRow(row, map(GetRow(row)));
+    }
+
     [Pure]
-    public Matrix<T> MapColumn(int column, Func<Vector<T>, Vector<T>> map) => SetColumn(column, map(GetColumn(column)));
+    public Matrix<T> MapColumn(int column, Func<Vector<T>, Vector<T>> map)
+    {
+        return SetColumn(column, map(GetColumn(column)));
+    }
+
     [Pure]
-    public Matrix<T> ReverseRows() => MapRows(Vector.Reverse);
+    public Matrix<T> ReverseRows()
+    {
+        return MapRows(Vector.Reverse);
+    }
+
     [Pure]
-    public Matrix<T> ReverseColumns() => MapColumns(Vector.Reverse);
+    public Matrix<T> ReverseColumns()
+    {
+        return MapColumns(Vector.Reverse);
+    }
 
     [Pure]
     public Matrix<T> Transpose()
@@ -153,7 +182,8 @@ public readonly struct Matrix<T>
 
     public override string ToString()
     {
-        var rows = GetRows().Select(row => row.GetValues().Select(value => value?.ToString() ?? "").ToArray()).ToArray();
+        var rows = GetRows().Select(row => row.GetValues().Select(value => value?.ToString() ?? "").ToArray())
+            .ToArray();
         var columnWidths = new int[NumColumns];
         for (var column = 0; column < NumColumns; ++column)
         for (var row = 0; row < NumRows; ++row)
@@ -185,7 +215,9 @@ public static class Matrix
 
     [Pure]
     public static Matrix<T> FromRows<T>(IEnumerable<IEnumerable<T>> rows)
-        => Matrix<T>.FromEnumerableOfVectors(rows.Select(Vector.FromEnumerable), Ordering.RowMajor);
+    {
+        return Matrix<T>.FromEnumerableOfVectors(rows.Select(Vector.FromEnumerable), Ordering.RowMajor);
+    }
 
     [Pure]
     public static Matrix<T> FromFunction<T>(int numColumns, int numRows, Func<int, int, T> valueProvider)
@@ -248,17 +280,23 @@ public readonly struct Vector<T>
         _values = values;
     }
 
-    public static readonly Vector<T> Empty = new Vector<T>(Array.Empty<T>());
+    public static readonly Vector<T> Empty = new(Array.Empty<T>());
 
     [Pure]
-    public static Vector<T> FromEnumerable(IEnumerable<T> values) => new (values.ToArray());
+    public static Vector<T> FromEnumerable(IEnumerable<T> values)
+    {
+        return new(values.ToArray());
+    }
 
     public int Length => _values.Length;
     public T this[int i] => _values[i];
 
     [Pure]
-    public IEnumerable<T> GetValues() => _values;
-    
+    public IEnumerable<T> GetValues()
+    {
+        return _values;
+    }
+
     [Pure]
     public Vector<T> MapIndices(Func<int, int> goesTo)
     {
@@ -272,9 +310,20 @@ public readonly struct Vector<T>
 public static class Vector
 {
     [Pure]
-    public static Vector<T> FromEnumerable<T>(IEnumerable<T> values) => Vector<T>.FromEnumerable(values);
+    public static Vector<T> FromEnumerable<T>(IEnumerable<T> values)
+    {
+        return Vector<T>.FromEnumerable(values);
+    }
+
     [Pure]
-    public static Vector<T> Reverse<T>(this Vector<T> vector) => vector.MapIndices(i => vector.Length - 1 - i);
+    public static Vector<T> Reverse<T>(this Vector<T> vector)
+    {
+        return vector.MapIndices(i => vector.Length - 1 - i);
+    }
+
     [Pure]
-    public static Vector<T> Rotate<T>(this Vector<T> vector, int shift)=> vector.MapIndices(i => ((i + shift) % vector.Length + vector.Length) % vector.Length);
+    public static Vector<T> Rotate<T>(this Vector<T> vector, int shift)
+    {
+        return vector.MapIndices(i => ((i + shift) % vector.Length + vector.Length) % vector.Length);
+    }
 }

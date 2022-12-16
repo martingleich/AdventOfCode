@@ -17,47 +17,48 @@ B X
 C Z
 ";
 
-    private enum Action
+    private static readonly ImmutableArray<Action> Actions =
+        ImmutableArray.Create(Action.Rock, Action.Paper, Action.Scissors);
+
+    private static Action ParseMy(string str)
     {
-        Rock,
-        Paper,
-        Scissors,
+        return str switch
+        {
+            "X" => Action.Rock,
+            "Y" => Action.Paper,
+            "Z" => Action.Scissors
+        };
     }
 
-    private static readonly ImmutableArray<Action> Actions = ImmutableArray.Create(Action.Rock, Action.Paper, Action.Scissors);
-
-    private static Action ParseMy(string str) => str switch
+    private static Action ParseTheir(string str)
     {
-        "X" => Action.Rock,
-        "Y" => Action.Paper,
-        "Z" => Action.Scissors,
-    };
-    private static Action ParseTheir(string str) => str switch
-    {
-        "A" => Action.Rock,
-        "B" => Action.Paper,
-        "C" => Action.Scissors,
-    };
-    private static Result ParseResult(string str) => str switch
-    {
-        "X" => Result.Loose,
-        "Y" => Result.Draw,
-        "Z" => Result.Win,
-    };
-
-    private enum Result
-    {
-        Win,
-        Draw,
-        Loose,
+        return str switch
+        {
+            "A" => Action.Rock,
+            "B" => Action.Paper,
+            "C" => Action.Scissors
+        };
     }
 
-    private static Action Beats(Action action) => action switch
+    private static Result ParseResult(string str)
     {
-        Action.Rock => Action.Scissors,
-        Action.Paper => Action.Rock,
-        Action.Scissors => Action.Paper,
-    };
+        return str switch
+        {
+            "X" => Result.Loose,
+            "Y" => Result.Draw,
+            "Z" => Result.Win
+        };
+    }
+
+    private static Action Beats(Action action)
+    {
+        return action switch
+        {
+            Action.Rock => Action.Scissors,
+            Action.Paper => Action.Rock,
+            Action.Scissors => Action.Paper
+        };
+    }
 
     private static Result GetMyResult(Action theirs, Action mine)
     {
@@ -74,33 +75,55 @@ C Z
         {
             Action.Rock => 1,
             Action.Paper => 2,
-            Action.Scissors => 3,
+            Action.Scissors => 3
         } + GetMyResult(theirs, mine) switch
         {
             Result.Loose => 0,
             Result.Draw => 3,
-            Result.Win => 6,
+            Result.Win => 6
         };
     }
 
-    private static Action GetRequiredAction(Action theirs, Result result) => Actions.First(action => GetMyResult(theirs, action) == result);
-    
+    private static Action GetRequiredAction(Action theirs, Result result)
+    {
+        return Actions.First(action => GetMyResult(theirs, action) == result);
+    }
+
     [TestCase(TEST_DATA, 15)]
-    public static int ExecutePart1(string input) =>
-        input.SplitLines().Select(str =>
+    public static int ExecutePart1(string input)
+    {
+        return input.SplitLines().Select(str =>
         {
             var parts = str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var theirs = ParseTheir(parts[0]);
             var mine = ParseMy(parts[1]);
             return (theirs, mine);
         }).Sum(x => GetPointsFor(x.theirs, x.mine));
+    }
+
     [TestCase(TEST_DATA, 12)]
-    public static int ExecutePart2(string input) =>
-        input.SplitLines().Select(str =>
+    public static int ExecutePart2(string input)
+    {
+        return input.SplitLines().Select(str =>
         {
             var parts = str.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             var theirs = ParseTheir(parts[0]);
             var result = ParseResult(parts[1]);
             return (theirs, mine: GetRequiredAction(theirs, result));
         }).Sum(x => GetPointsFor(x.theirs, x.mine));
+    }
+
+    private enum Action
+    {
+        Rock,
+        Paper,
+        Scissors
+    }
+
+    private enum Result
+    {
+        Win,
+        Draw,
+        Loose
+    }
 }

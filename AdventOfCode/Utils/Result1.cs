@@ -1,7 +1,9 @@
-﻿namespace AdventOfCode.Utils
+﻿namespace AdventOfCode.Utils;
+
+public static class Result
 {
-    public static class Result
+    public static Result<T> Okay<T>(T value)
     {
-        public static Result<T> Okay<T>(T value) => Result<T>.Okay(value);
+        return Result<T>.Okay(value);
     }
 }

@@ -1,4 +1,5 @@
-﻿namespace AdventOfCode.Utils
+﻿namespace AdventOfCode.Utils;
+
+public readonly struct Empty
 {
-    public readonly struct Empty { }
 }

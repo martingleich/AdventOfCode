@@ -1,18 +1,20 @@
 ﻿using System;
 
-namespace ProblemsLibrary
+namespace ProblemsLibrary;
+
+public sealed class TestCase
 {
-	public sealed class TestCase
-	{
-		public readonly string Name;
-		public readonly Func<TestCaseResult> Executor;
+    public readonly Func<TestCaseResult> Executor;
+    public readonly string Name;
 
-		public TestCase(string name, Func<TestCaseResult> executor)
-		{
-			Name = name;
-			Executor = executor;
-		}
+    public TestCase(string name, Func<TestCaseResult> executor)
+    {
+        Name = name;
+        Executor = executor;
+    }
 
-		public override string ToString() => Name;
-	}
+    public override string ToString()
+    {
+        return Name;
+    }
 }

@@ -2,6 +2,7 @@
 using System.Linq;
 using AdventOfCode.Utils;
 using ProblemsLibrary;
+
 // ReSharper disable StringLiteralTypo
 
 namespace AdventOfCode._2016;
@@ -20,6 +21,7 @@ public class Day07
         var (inside, outside) = SplitInsideOutsideBrackets(input);
         return outside.Any(HasABBA) && !inside.Any(HasABBA);
     }
+
     [TestCase("aba[bab]xyz", true)]
     [TestCase("xyx[xyx]xyx", false)]
     [TestCase("aaa[kek]eke", true)]
@@ -32,16 +34,18 @@ public class Day07
         var matchingForOutside = allABAsOutside.Select(x => $"{x[1]}{x[0]}{x[1]}").ToArray();
         return allABAsInside.Intersect(matchingForOutside).Any();
     }
+
     public static bool HasABBA(string input)
     {
-        for (int i = 0; i < input.Length - 3; ++i)
+        for (var i = 0; i < input.Length - 3; ++i)
             if (input[i] != input[i + 1] && input[i + 1] == input[i + 2] && input[i] == input[i + 3])
                 return true;
         return false;
     }
+
     public static IEnumerable<string> GetABAs(string input)
     {
-        for (int i = 0; i < input.Length - 2; ++i)
+        for (var i = 0; i < input.Length - 2; ++i)
             if (input[i] != input[i + 1] && input[i] == input[i + 2])
                 yield return input[i..(i + 3)];
     }
@@ -52,8 +56,7 @@ public class Day07
         var depth = 0;
         var outside = new List<string>();
         var inside = new List<string>();
-        foreach (char c in input)
-        {
+        foreach (var c in input)
             if (c == '[')
             {
                 if (s != "")
@@ -61,6 +64,7 @@ public class Day07
                     outside.Add(s);
                     s = "";
                 }
+
                 ++depth;
             }
             else if (c == ']')
@@ -70,16 +74,26 @@ public class Day07
                     inside.Add(s);
                     s = "";
                 }
+
                 --depth;
             }
             else
+            {
                 s += c;
-        }
+            }
+
         if (s != "")
             outside.Add(s);
         return (inside.ToArray(), outside.ToArray());
     }
-    
-    public static int ExecutePart1(string input) => input.SplitLines().Count(SupportsTLS);
-    public static int ExecutePart2(string input) => input.SplitLines().Count(SupportsSSL);
+
+    public static int ExecutePart1(string input)
+    {
+        return input.SplitLines().Count(SupportsTLS);
+    }
+
+    public static int ExecutePart2(string input)
+    {
+        return input.SplitLines().Count(SupportsSSL);
+    }
 }
