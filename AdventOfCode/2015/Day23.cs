@@ -16,7 +16,7 @@ public class Day23_Common
             {
                 "a" => (cpu => cpu.A, (cpu, v) => cpu with { A = v }),
                 "b" => (cpu => cpu.B, (cpu, v) => cpu with { B = v }),
-                _ => throw new NotImplementedException()
+                _ => throw new InvalidOperationException()
             };
         }
 
@@ -27,7 +27,7 @@ public class Day23_Common
                 "hlf" => v => v / 2,
                 "tpl" => v => v * 3,
                 "inc" => v => v + 1,
-                _ => throw new NotImplementedException()
+                _ => throw new InvalidOperationException()
             };
             var (reader, writer) = GetRegister(m.Groups[2].Value);
             return (Func<Cpu, Cpu>)(cpu => writer(cpu, op(reader(cpu))).Jump(1));
@@ -43,7 +43,7 @@ public class Day23_Common
             {
                 "jie" => v => v % 2 == 0,
                 "jio" => v => v == 1,
-                _ => throw new NotImplementedException()
+                _ => throw new InvalidOperationException()
             };
             var (reader, _) = GetRegister(m.Groups[2].Value);
             var offset = int.Parse(m.Groups[3].ValueSpan);

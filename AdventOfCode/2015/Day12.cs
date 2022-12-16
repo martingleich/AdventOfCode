@@ -54,7 +54,7 @@ public class Day12
 
             public override void Write(Utf8JsonWriter writer, SumAllNumbers value, JsonSerializerOptions options)
             {
-                throw new NotImplementedException();
+                throw new InvalidOperationException();
             }
         }
     }
@@ -128,7 +128,7 @@ public class Day12Part2
 
             public override void Write(Utf8JsonWriter writer, SumAllNumbers value, JsonSerializerOptions options)
             {
-                throw new NotImplementedException();
+                throw new InvalidOperationException();
             }
         }
     }
