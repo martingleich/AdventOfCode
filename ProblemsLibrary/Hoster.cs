@@ -27,7 +27,7 @@ namespace ProblemsLibrary
 
 		public void Run(Problem problems, string input)
 		{
-			if (!RunTests(new []{problems}))
+			if (RunTests(new []{problems}))
 				SolveProblems(new []{problems}, input);
 		}
 

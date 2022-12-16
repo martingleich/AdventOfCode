@@ -55,8 +55,7 @@ namespace AdventOfCode
 
 				// Arg1: Problemlist
 				var problems = hoster.GetProblems(args[1]);
-				hoster.Test(problems);
-				return 0;
+				hoster.Test(problems); return 0;
 			}
 
 			Console.Error.WriteLine($"Unknown mode: {args[0]}");
