@@ -28,7 +28,7 @@ public static class Program
 
         if (mode == "profile")
         {
-            string FilenameProvider(string id)
+            static string FilenameProvider(string id)
             {
                 var parts = id.Split('-');
                 return $"{parts[0]}-{parts[1]}.txt";
@@ -49,12 +49,6 @@ public static class Program
 
         if (mode == "test")
         {
-            string FilenameProvider(string id)
-            {
-                var parts = id.Split('-');
-                return $"{parts[0]}-{parts[1]}.txt";
-            }
-
             // Arg1: Problemlist
             var problems = hoster.GetProblems(args[1]);
             hoster.Test(problems);

@@ -216,12 +216,6 @@ public static class Parser
         return new TrimmedParser<T>(parser);
     }
 
-    public static Parser<Matrix<T>> Grid<T, TRowSeparator>(
-        this Parser<T> value, Parser<TRowSeparator> rowSeparator)
-    {
-        return value.Repeat().DelimitedWith(rowSeparator).Select(Matrix.FromRows);
-    }
-
     public static Parser<T> OneOf<T>(params Parser<T>[] parsers)
     {
         return new OneOfParser<T>(parsers.ToImmutableArray());
@@ -569,4 +563,52 @@ public static class Parser
             return Result.Okay(parsed);
         }
     }
+
+        public static Parser<Matrix<T>> Grid<T, TSep>(this Parser<T> self, Parser<TSep> lineSep)
+            => new GridParser<T, TSep>(self, lineSep);
+        private sealed class GridParser<T, TSep> : Parser<Matrix<T>>
+        {
+            private readonly Parser<T> _parser;
+            private readonly Parser<TSep> _parserSeperator;
+
+            public GridParser(Parser<T> parser, Parser<TSep> parserSeperator)
+            {
+                _parser = parser ?? throw new ArgumentNullException(nameof(parser));
+                _parserSeperator = parserSeperator ?? throw new ArgumentNullException(nameof(parserSeperator));
+            }
+
+            public override Result<PartialParsed<Matrix<T>>> ParsePartial(Span input)
+            {
+                var elements = new List<T>();
+                var finalWidth = default(int?);
+                var width = 0;
+                var height = 0;
+                while(true)
+                {
+                    if (_parser.ParsePartial(input).TryGetValue(out var parsed))
+                    {
+                        elements.Add(parsed.Value);
+                        input = parsed.Remaining;
+                        ++width;
+                    }
+                    else
+                    {
+                        if (width == 0)
+                            break; // Allow a trailing seperator
+                        if (finalWidth is int fw && fw != width)
+                            return default;
+                        else
+                            finalWidth = width;
+                        width = 0;
+                        ++height;
+                        if (_parserSeperator.ParsePartial(input).TryGetValue(out var parsedSep))
+                            input = parsedSep.Remaining;
+                        else
+                            break;
+                    }
+                }
+                var result = finalWidth is int fw2 ? Matrix.FromEnumerable(fw2, height, Matrix.Ordering.RowMajor, elements) : Matrix<T>.Empty;
+                return Result.Okay(PartialParsed.Create(result, input));
+            }
+        }
 }
