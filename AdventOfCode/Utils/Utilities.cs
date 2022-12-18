@@ -392,3 +392,34 @@ public static class Utilities
         }
     }
 }
+
+public static class MathULong
+{
+    public static ulong Gcd(ulong a, ulong b)
+    {
+        while (b != 0)
+            (a, b) = (b, a % b);
+        return a;
+    }
+    public static ulong Lcm(ulong a, ulong b)
+    {
+        var gcd = Gcd(a, b);
+        return (a / gcd) * (b / gcd);
+    }
+    public static ulong Mul(ulong a, ulong b) => checked(a * b);
+    public static ulong Add(ulong a, ulong b) => checked(a + b);
+}
+public static class MathInt
+{
+    public static int Add(int a, int b) => checked(a + b);
+    public static int Mul(int a, int b) => checked(a * b);
+}
+public static class MathUInt
+{
+    public static uint Mul(uint a, uint b) => checked(a * b);
+    public static uint Add(uint a, uint b) => checked(a + b);
+}
+public static class MathBool
+{
+    public static bool Or(bool a, bool b) => a | b;
+}

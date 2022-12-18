@@ -20,14 +20,14 @@ public class Day08
     public static int ExecutePart1(string input)
     {
         var grid = Parser.SingleDigit.Grid(Parser.NewLine).Parse(input.Trim());
-        return Matrix.CombineMany((a, b) => a | b, grid.FromEachDirection(GetVisibility)).GetValues().Count(x => x);
+        return Matrix.CombineMany(MathBool.Or, grid.FromEachDirection(GetVisibility)).GetValues().Count(x => x);
     }
 
     [TestCase(TestData, 8)]
     public static int ExecutePart2(string input)
     {
         var grid = Parser.SingleDigit.Grid(Parser.NewLine).Parse(input.Trim());
-        return Matrix.CombineMany((a, b) => a * b, grid.FromEachDirection(GetVisibleCount)).GetValues().Max();
+        return Matrix.CombineMany(MathInt.Mul, grid.FromEachDirection(GetVisibleCount)).GetValues().Max();
     }
 
     private static Vector<int> GetVisibleCount<T>(Vector<T> values) where T : IComparable<T>

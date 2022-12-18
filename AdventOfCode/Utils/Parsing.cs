@@ -105,6 +105,10 @@ public static class Parser
 
     public static readonly Parser<string> Whitespace =
         MakeRegexParser(new Regex(@"^\s+", RegexOptions.Compiled), m => m.Value);
+    public static readonly Parser<string> EmptyLine =
+        MakeRegexParser(new Regex(@"^(\n|\r\n)( *)(\n|\r\n)", RegexOptions.Compiled), m => m.Value);
+    public static readonly Parser<string> AnyWhitespace =
+        MakeRegexParser(new Regex(@"^\s*", RegexOptions.Compiled), m => m.Value);
 
     public static readonly Parser<string> Line =
         MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
