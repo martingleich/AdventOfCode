@@ -100,6 +100,8 @@ public static class Parser
     public static readonly Parser<int> SignedInteger = new IntegerParser(false);
     public static readonly Parser<int> SingleDigit = new SingleDigitParser();
 
+    public static readonly Parser<char> Char = MakeRegexParser(new Regex(@"^[a-zA-Z]", RegexOptions.Compiled), m => m.Value[0]);
+
     public static readonly Parser<string> NewLine =
         MakeRegexParser(new Regex(@"^\n|(\r\n)", RegexOptions.Compiled), m => m.Value);
 
@@ -140,6 +142,12 @@ public static class Parser
         return from f in first
             from s in second
             select s;
+    }
+    public static Parser<T1> ThenIgnore<T1, T2>(this Parser<T1> first, Parser<T2> second)
+    {
+        return from f in first
+            from s in second
+            select f;
     }
 
     public static Parser<Match> ToParser(this Regex regex)

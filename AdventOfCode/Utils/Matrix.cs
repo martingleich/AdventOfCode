@@ -193,6 +193,21 @@ public readonly struct Matrix<T>
             string.Join("|", row.Select((v, i) => " " + v.PadLeft(columnWidths[i]) + " ")));
         return string.Join(Environment.NewLine + new string('-', totalWidth) + Environment.NewLine, flatRows);
     }
+
+    public IEnumerable<KeyValuePair<Vec2I, T>> GetIndexed()
+    {
+        for (int c = 0; c < NumColumns; ++c)
+            for (int r = 0; r < NumRows; ++r)
+                yield return KeyValuePair.Create(new Vec2I(c, r), this[c, r]);
+    }
+
+    public IEnumerable<Vec2I> AllWhere(Func<T, bool> filter)
+    {
+        for (int c = 0; c < NumColumns; ++c)
+            for (int r = 0; r < NumRows; ++r)
+                if (filter(this[c, r]))
+                    yield return new Vec2I(c, r);
+    }
 }
 
 public static class Matrix

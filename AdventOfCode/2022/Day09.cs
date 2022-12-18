@@ -56,19 +56,6 @@ U 20", 36)]
             .Count();
     }
 
-    private readonly record struct Vec2I(int X, int Y)
-    {
-        public static readonly Vec2I Right = new(1, 0);
-        public static readonly Vec2I Left = new(-1, 0);
-        public static readonly Vec2I Up = new(0, 1);
-        public static readonly Vec2I Down = new(0, -1);
-
-        public static Vec2I operator +(Vec2I a, Vec2I b)
-        {
-            return new(a.X + b.X, a.Y + b.Y);
-        }
-    }
-
     private abstract record Snake(Vec2I Position)
     {
         public abstract Vec2I TailPosition { get; }
