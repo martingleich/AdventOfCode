@@ -23,7 +23,8 @@ public static class Reflection
             }
             catch (Exception e)
             {
-                return TestCaseResult.Error($"Exception: {Utils.PrettyPrint(Utils.FlattenException(e))}");
+                return TestCaseResult.Error(
+                    $"Exception: {Utils.PrettyPrint(Utils.SingleOrList(Utils.FlattenException(e)))}");
             }
 
             if (attr.Output.Equals(result))

@@ -162,6 +162,11 @@ public static class Utilities
         }
     }
 
+    public static IEnumerable<(T Value, int Index)> Indexed<T>(this IEnumerable<T> self)
+    {
+        return self.Select((x, i) => (x, i));
+    }
+
     public static IEnumerable<ImmutableArray<string>> EachPermutation(ImmutableArray<string> items)
     {
         if (items.Length <= 1)
@@ -401,24 +406,29 @@ public static class MathULong
             (a, b) = (b, a % b);
         return a;
     }
+
     public static ulong Lcm(ulong a, ulong b)
     {
         var gcd = Gcd(a, b);
         return (a / gcd) * (b / gcd);
     }
+
     public static ulong Mul(ulong a, ulong b) => checked(a * b);
     public static ulong Add(ulong a, ulong b) => checked(a + b);
 }
+
 public static class MathInt
 {
     public static int Add(int a, int b) => checked(a + b);
     public static int Mul(int a, int b) => checked(a * b);
 }
+
 public static class MathUInt
 {
     public static uint Mul(uint a, uint b) => checked(a * b);
     public static uint Add(uint a, uint b) => checked(a + b);
 }
+
 public static class MathBool
 {
     public static bool Or(bool a, bool b) => a | b;
