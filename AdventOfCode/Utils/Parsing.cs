@@ -118,6 +118,11 @@ public static class Parser
     public static readonly Parser<string> Line =
         MakeRegexParser(new Regex(@"^([^\r\n]*)(\n|\r\n|$)", RegexOptions.Compiled), m => m.Groups[1].Value);
 
+    public static readonly Parser<int> EnglishNumber = Parser.OneOf(
+        Parser.Fixed("first").Return(1),
+        Parser.Fixed("second").Return(2),
+        Parser.Fixed("third").Return(3),
+        Parser.Fixed("fourth").Return(4));
     private static int? TryReadDigit(char c)
     {
         if (c >= '0' && c <= '9')
@@ -319,6 +324,7 @@ public static class Parser
             var realValue = (int)(sign ? -r : r);
             return anyDigits ? Result.Okay(PartialParsed.Create(realValue, input)) : default;
         }
+        public override string? ToString() => "Int";
     }
 
     private sealed class SingleDigitParser : Parser<int>
@@ -329,6 +335,7 @@ public static class Parser
                 return Result.Okay(PartialParsed.Create(d, input.Advance(1)));
             return default;
         }
+        public override string? ToString() => "SingleDigit";
     }
 
     private sealed class ReturnParser<TResult, TInput> : Parser<TResult>
@@ -348,6 +355,7 @@ public static class Parser
                 return default;
             return Result.Okay(PartialParsed.Create(_value, parsed.Remaining));
         }
+        public override string? ToString() => _parser.ToString();
     }
 
     private sealed class FixedParser : Parser<string>
@@ -365,6 +373,7 @@ public static class Parser
                 return Result.Okay(PartialParsed.Create(_value, input.Advance(_value.Length)));
             return default;
         }
+        public override string ToString() => _value;
     }
 
     private sealed class RegexParser : Parser<Match>
@@ -381,6 +390,7 @@ public static class Parser
             var m = _regex.Match(input.Input, input.Cursor, input.Length);
             return m.Success ? Result.Okay(PartialParsed.Create(m, input.Advance(m.Length))) : default;
         }
+        public override string ToString() => _regex.ToString();
     }
 
     private sealed class RepeatParser<T> : Parser<IEnumerable<T>>
@@ -405,6 +415,7 @@ public static class Parser
             return Result.Okay(PartialParsed.Create(results?.AsReadOnly().AsEnumerable() ?? Enumerable.Empty<T>(),
                 input));
         }
+        public override string ToString() => $"Repeat({_parser})";
     }
 
     private sealed class FormatStringParser : Parser<ImmutableArray<object>>
@@ -517,6 +528,7 @@ public static class Parser
 
             return default;
         }
+        public override string ToString() => $"({string.Join("|", _alternatives)})";
     }
 
     private sealed class ThenFixedParser<T> : Parser<T>

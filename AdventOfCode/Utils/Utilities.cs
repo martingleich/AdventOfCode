@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace AdventOfCode.Utils;
 
@@ -43,6 +44,7 @@ public static class Utilities
     {
         return self.SplitLines(true);
     }
+
 
     public static IEnumerable<IEnumerable<T>> Split<T>(this IEnumerable<T> self, Func<T, bool> split,
         SplitOptions splitOptions = SplitOptions.IgnoreEmpty)
@@ -396,6 +398,56 @@ public static class Utilities
             return Index.GetHashCode();
         }
     }
+
+    public static int? AStarLength<T>(T start, Func<T, int> h, Func<T, bool> isEnd, Func<T, IEnumerable<T>> neighbours) where T : notnull, IEquatable<T>
+    {
+        var unvisited = new PriorityQueue<T, int>();
+        var gScore = new Dictionary<T, int>();
+        unvisited.Enqueue(start, h(start));
+        gScore[start] = 0;
+
+        while(unvisited.TryDequeue(out var current, out _))
+        {
+            if (isEnd(current))
+                return gScore[current];
+            foreach (var neighbour in neighbours(current))
+            {
+                var g = gScore.TryGetValue(current, out var value) ? value : (int.MaxValue - 1);
+                var tg = g + 1;
+                if (!gScore.TryGetValue(neighbour, out var gn) || tg < gn)
+                {
+                    gScore[neighbour] = tg;
+                    unvisited.Enqueue(neighbour, tg + h(neighbour));
+                }
+            }
+        }
+        return null;
+    }
+    public static int? DijstkraLength<T>(T start, Func<T, bool> isEnd, Func<T, IEnumerable<T>> neighbours) where T : notnull, IEquatable<T>
+    {
+        var dist = new Dictionary<T, int>();
+        var unvisited = new PriorityQueue<T, int>();
+        var visited = new HashSet<T>();
+        unvisited.Enqueue(start, 0);
+        dist[start] = 0;
+        while (unvisited.TryDequeue(out var u, out var du))
+        {
+            if (isEnd(u))
+                return du;
+            visited.Add(u);
+            foreach (var v in neighbours(u))
+            {
+                if (!visited.Contains(v))
+                {
+                    var alt = du + 1;
+                    if (!dist.ContainsKey(v) || alt < dist[v])
+                        dist[v] = alt;
+                    unvisited.Enqueue(v, dist[v]);
+                }
+            }
+        }
+        return null;
+    }
 }
 
 public static class MathULong
@@ -421,6 +473,11 @@ public static class MathInt
 {
     public static int Add(int a, int b) => checked(a + b);
     public static int Mul(int a, int b) => checked(a * b);
+    public static int Or(int a, int b) => a | b;
+}
+public static class MathByte
+{
+    public static byte Or(byte a, byte b) => (byte)(a | b);
 }
 
 public static class MathUInt
