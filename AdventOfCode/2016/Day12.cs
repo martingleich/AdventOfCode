@@ -22,7 +22,7 @@ public class Day12
     static readonly Value RegB = new (cpu => cpu.B, (cpu, v) => cpu with { B = v });
     static readonly Value RegC = new (cpu => cpu.C, (cpu, v) => cpu with { C = v });
     static readonly Value RegD = new (cpu => cpu.D, (cpu, v) => cpu with { D = v });
-    static Instruction Copy(Readable src, Value dst) => cpu => dst.Write(cpu, src(cpu)).Step();
+    static Instruction Copy(Readable src, Writable dst) => cpu => dst(cpu, src(cpu)).Step();
     static Instruction Inc(Value dst) => cpu => dst.Write(cpu, dst.Read(cpu) + 1).Step();
     static Instruction Dec(Value dst) => cpu => dst.Write(cpu, dst.Read(cpu) - 1).Step();
     static Instruction Jnz(Readable cond, Readable offset) => cpu => cond(cpu) != 0
@@ -37,9 +37,10 @@ public class Day12
             Parser.Fixed("b").Return(RegB),
             Parser.Fixed("c").Return(RegC),
             Parser.Fixed("d").Return(RegD));
+        var writable = register.Select(r => r.Write);
         var readable = Parser.OneOf(literal, register.Select(r => r.Read));
         var instruction = Parser.OneOf(
-            Parser.FormattedString<Instruction>($"cpy {readable} {register}", m => Copy(m[0], m[1])),
+            Parser.FormattedString<Instruction>($"cpy {readable} {writable}", m => Copy(m[0], m[1])),
             Parser.FormattedString<Instruction>($"inc {register}", m => Inc(m[0])),
             Parser.FormattedString<Instruction>($"dec {register}", m => Dec(m[0])),
             Parser.FormattedString<Instruction>($"jnz {readable} {readable}", m => Jnz(m[0], m[1])));
